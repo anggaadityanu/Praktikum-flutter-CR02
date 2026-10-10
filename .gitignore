@@ -3,7 +3,6 @@
 build/
 .idea/
 *.iml
-.vscode/
 .packages
 .pub-cache/
 .pub/
