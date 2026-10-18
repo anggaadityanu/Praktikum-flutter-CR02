@@ -1,125 +1,457 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+// ======================= TEMA (GLOBAL STATE) =======================
+
+final themeMode = ValueNotifier<ThemeMode>(ThemeMode.light);
+final seedColor = ValueNotifier<Color>(Colors.teal);
+
+const List<Color> pilihanWarna = [
+  Colors.teal,
+  Colors.indigo,
+  Colors.deepOrange,
+  Colors.pink,
+];
+
+ThemeData buatTema(Color seed, Brightness brightness) {
+  return ThemeData(
+    useMaterial3: true,
+    colorSchemeSeed: seed,
+    brightness: brightness,
+    appBarTheme: const AppBarTheme(centerTitle: true),
+  );
+}
+
+Future<void> _muatPreferensiTema() async {
+  final prefs = await SharedPreferences.getInstance();
+  final gelap = prefs.getBool('gelap') ?? false;
+  final warnaIndex = prefs.getInt('warnaIndex') ?? 0;
+  themeMode.value = gelap ? ThemeMode.dark : ThemeMode.light;
+  seedColor.value = pilihanWarna[warnaIndex.clamp(0, pilihanWarna.length - 1)];
+}
+
+Future<void> _simpanTema() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('gelap', themeMode.value == ThemeMode.dark);
+  await prefs.setInt('warnaIndex', pilihanWarna.indexOf(seedColor.value));
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await _muatPreferensiTema();
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    return ListenableBuilder(
+      listenable: Listenable.merge([themeMode, seedColor]),
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'Galeri Tempat Wisata',
+          debugShowCheckedModeBanner: false,
+          theme: buatTema(seedColor.value, Brightness.light),
+          darkTheme: buatTema(seedColor.value, Brightness.dark),
+          themeMode: themeMode.value,
+          initialRoute: '/',
+          routes: {
+            '/': (_) => const ShellPage(),
+          },
+          onGenerateRoute: (settings) {
+            if (settings.name == '/detail') {
+              final destinasi = settings.arguments as Destinasi;
+              return PageRouteBuilder(
+                settings: settings,
+                transitionDuration: const Duration(milliseconds: 350),
+                pageBuilder: (_, __, ___) => DetailPage(destinasi: destinasi),
+                transitionsBuilder: (_, animation, __, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+              );
+            }
+            return null;
+          },
+          onUnknownRoute: (settings) {
+            return MaterialPageRoute(
+              builder: (_) => Scaffold(
+                appBar: AppBar(title: const Text('404')),
+                body: const Center(child: Text('404 - Halaman tidak ditemukan')),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+// ======================= MODEL =======================
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
+class Destinasi {
+  final int id;
+  final String nama;
+  final String kategori;
+  final String deskripsi;
+  final IconData ikon;
+  final Color warna;
 
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  const Destinasi({
+    required this.id,
+    required this.nama,
+    required this.kategori,
+    required this.deskripsi,
+    required this.ikon,
+    required this.warna,
+  });
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+const daftarDestinasi = [
+  Destinasi(
+    id: 1,
+    nama: 'Raja Ampat',
+    kategori: 'Bahari',
+    deskripsi: 'Gugusan pulau karst dengan terumbu karang terkaya di dunia, surganya para penyelam.',
+    ikon: Icons.water,
+    warna: Colors.blue,
+  ),
+  Destinasi(
+    id: 2,
+    nama: 'Gunung Bromo',
+    kategori: 'Pegunungan',
+    deskripsi: 'Gunung berapi aktif dengan lautan pasir dan pemandangan matahari terbit yang ikonik.',
+    ikon: Icons.landscape,
+    warna: Colors.deepOrange,
+  ),
+  Destinasi(
+    id: 3,
+    nama: 'Candi Borobudur',
+    kategori: 'Budaya',
+    deskripsi: 'Candi Buddha terbesar di dunia, peninggalan Dinasti Syailendra abad ke-9.',
+    ikon: Icons.temple_buddhist,
+    warna: Colors.brown,
+  ),
+  Destinasi(
+    id: 4,
+    nama: 'Danau Toba',
+    kategori: 'Alam',
+    deskripsi: 'Danau vulkanik terbesar di Asia Tenggara dengan Pulau Samosir di tengahnya.',
+    ikon: Icons.waves,
+    warna: Colors.indigo,
+  ),
+  Destinasi(
+    id: 5,
+    nama: 'Kawah Ijen',
+    kategori: 'Pegunungan',
+    deskripsi: 'Terkenal dengan fenomena api biru dan danau kawah berwarna hijau toska.',
+    ikon: Icons.local_fire_department,
+    warna: Colors.teal,
+  ),
+  Destinasi(
+    id: 6,
+    nama: 'Pantai Kuta',
+    kategori: 'Bahari',
+    deskripsi: 'Pantai populer di Bali dengan ombak yang cocok untuk berselancar dan sunset memukau.',
+    ikon: Icons.beach_access,
+    warna: Colors.orange,
+  ),
+];
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+// ======================= FAVORIT (GLOBAL STATE) =======================
+
+final favoritIds = ValueNotifier<Set<int>>({});
+
+// ======================= SHELL: NAVIGASI TAB BAWAH =======================
+
+class ShellPage extends StatefulWidget {
+  const ShellPage({super.key});
+
+  @override
+  State<ShellPage> createState() => _ShellPageState();
+}
+
+class _ShellPageState extends State<ShellPage> {
+  int _index = 0;
+  static const _halaman = [BerandaTab(), FavoritTab(), PengaturanTab()];
+  static const _judul = ['Galeri Wisata', 'Favorit', 'Pengaturan'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_judul[_index])),
+      body: IndexedStack(index: _index, children: _halaman),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(Icons.explore),
+            label: 'Beranda',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.favorite_border),
+            selectedIcon: Icon(Icons.favorite),
+            label: 'Favorit',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Pengaturan',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ======================= TAB: BERANDA =======================
+
+class BerandaTab extends StatelessWidget {
+  const BerandaTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: daftarDestinasi.length,
+      itemBuilder: (context, i) => _KartuDestinasi(destinasi: daftarDestinasi[i]),
+    );
+  }
+}
+
+class FavoritTab extends StatelessWidget {
+  const FavoritTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return ValueListenableBuilder<Set<int>>(
+      valueListenable: favoritIds,
+      builder: (context, ids, _) {
+        final data = daftarDestinasi.where((d) => ids.contains(d.id)).toList();
+        if (data.isEmpty) {
+          return Center(
+            child: Text(
+              'Belum ada destinasi favorit.\nTekan ikon hati di Beranda.',
+              textAlign: TextAlign.center,
+              style: tema.textTheme.bodyLarge,
+            ),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: data.length,
+          itemBuilder: (context, i) => _KartuDestinasi(destinasi: data[i]),
+        );
+      },
+    );
+  }
+}
+
+// Kartu dipakai bersama Beranda & Favorit, dengan tombol favorit beranimasi implisit
+class _KartuDestinasi extends StatelessWidget {
+  final Destinasi destinasi;
+  const _KartuDestinasi({required this.destinasi});
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(10),
+        leading: Hero(
+          tag: 'ikon-${destinasi.id}',
+          child: CircleAvatar(
+            radius: 26,
+            backgroundColor: destinasi.warna,
+            child: Icon(destinasi.ikon, color: Colors.white),
+          ),
+        ),
+        title: Text(destinasi.nama, style: tema.textTheme.titleMedium),
+        subtitle: Text(destinasi.kategori),
+        trailing: _TombolFavorit(id: destinasi.id),
+        onTap: () {
+          Navigator.pushNamed(context, '/detail', arguments: destinasi);
+        },
+      ),
+    );
+  }
+}
+
+// Animasi IMPLISIT: AnimatedScale pada ikon favorit saat ditekan
+class _TombolFavorit extends StatelessWidget {
+  final int id;
+  const _TombolFavorit({required this.id});
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return ValueListenableBuilder<Set<int>>(
+      valueListenable: favoritIds,
+      builder: (context, ids, _) {
+        final aktif = ids.contains(id);
+        return IconButton(
+          onPressed: () {
+            final baru = Set<int>.from(ids);
+            if (aktif) {
+              baru.remove(id);
+            } else {
+              baru.add(id);
+            }
+            favoritIds.value = baru;
+          },
+          icon: AnimatedScale(
+            duration: const Duration(milliseconds: 250),
+            scale: aktif ? 1.2 : 1.0,
+            curve: Curves.elasticOut,
+            child: Icon(
+              aktif ? Icons.favorite : Icons.favorite_border,
+              color: aktif ? tema.colorScheme.error : tema.colorScheme.outline,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ======================= HALAMAN DETAIL =======================
+
+class DetailPage extends StatefulWidget {
+  final Destinasi destinasi;
+  const DetailPage({super.key, required this.destinasi});
+
+  @override
+  State<DetailPage> createState() => _DetailPageState();
+}
+
+// Animasi EKSPLISIT: AnimationController menggerakkan fade + slide saat halaman dibuka
+class _DetailPageState extends State<DetailPage> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _geser;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _geser = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    final tema = Theme.of(context);
+    final d = widget.destinasi;
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
+      appBar: AppBar(title: Text(d.nama)),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Hero(
+                tag: 'ikon-${d.id}',
+                child: CircleAvatar(
+                  radius: 64,
+                  backgroundColor: d.warna,
+                  child: Icon(d.ikon, size: 64, color: Colors.white),
+                ),
+              ),
+              const SizedBox(height: 20),
+              FadeTransition(
+                opacity: _fade,
+                child: SlideTransition(
+                  position: _geser,
+                  child: Column(
+                    children: [
+                      Text(d.nama, style: tema.textTheme.headlineSmall),
+                      const SizedBox(height: 4),
+                      Chip(label: Text(d.kategori)),
+                      const SizedBox(height: 16),
+                      Text(
+                        d.deskripsi,
+                        textAlign: TextAlign.center,
+                        style: tema.textTheme.bodyLarge,
+                      ),
+                      const SizedBox(height: 24),
+                      _TombolFavorit(id: d.id),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+}
+
+// ======================= TAB: PENGATURAN =======================
+
+class PengaturanTab extends StatelessWidget {
+  const PengaturanTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([themeMode, seedColor]),
+      builder: (context, _) {
+        final tema = Theme.of(context);
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            SwitchListTile(
+              title: const Text('Mode gelap'),
+              value: themeMode.value == ThemeMode.dark,
+              onChanged: (v) {
+                themeMode.value = v ? ThemeMode.dark : ThemeMode.light;
+                _simpanTema();
+              },
+            ),
+            const SizedBox(height: 8),
+            Text('Warna tema', style: tema.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 12,
+              children: [
+                for (final c in pilihanWarna)
+                  GestureDetector(
+                    onTap: () {
+                      seedColor.value = c;
+                      _simpanTema();
+                    },
+                    child: CircleAvatar(
+                      backgroundColor: c,
+                      child: seedColor.value == c
+                          ? const Icon(Icons.check, color: Colors.white)
+                          : null,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 }
