@@ -49,13 +49,20 @@ tetap ada setelah aplikasi ditutup.
 
 Diuji pada emulator Android Studio: **Pixel 6, Android 14 (API 34)**.
 
-| Hari Ini | Form (pesan galat) | Pengaturan |
-|---|---|---|
-| ![Hari Ini](img/gambar1.png) | ![Form galat](img/gambar2.png) | ![Pengaturan](img/gambar3.png) |
+<table>
+  <tr>
+    <td align="center"><img src="img/gambar1.png" width="220"><br><sub>Hari Ini: daftar kegiatan</sub></td>
+    <td align="center"><img src="img/gambar2.png" width="220"><br><sub>Laporan Hari Ini</sub></td>
+    <td align="center"><img src="img/gambar3.png" width="220"><br><sub>Pengaturan (mode terang)</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="img/gambar4.png" width="220"><br><sub>Laporan</sub></td>
+    <td align="center"><img src="img/gambar5.png" width="220"><br><sub>Pengaturan (mode gelap)</sub></td>
+    <td align="center"><img src="img/gambar6.png" width="220"><br><sub>cari kegiatan</sub></td>
+  </tr>
+</table>
 
-| Laporan | Mode gelap |
-|---|---|---|
-| ![Laporan](img/gambar4.png) | ![Mode gelap](img/gambar5.png) | 
+
 ## Sintaks yang Digunakan
 
 ### 1. Model data: `enum`, `factory`, dan `extension`
