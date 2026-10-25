@@ -7,7 +7,7 @@ kegiatan harian sekaligus uang masuk dan keluar.
 
 | | |
 |---|---|
-| Nama | Aga |
+| Nama | Angga Aditya Nugraha |
 | NIM | 20240801165 |
 | Program Studi | Teknik Informatika, Universitas Esa Unggul |
 | Mata Kuliah | Pemrograman Mobile (CIE511) |
