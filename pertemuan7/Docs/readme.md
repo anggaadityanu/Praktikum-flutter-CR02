@@ -49,11 +49,11 @@ tetap ada setelah aplikasi ditutup.
 
 Diuji pada emulator Android Studio: **Pixel 6, Android 14 (API 34)**.
 
-| Hari Ini | Form (pesan galat) | Laporan |
+| Hari Ini | Form (pesan galat) | Pengaturan |
 |---|---|---|
 | ![Hari Ini](img/gambar1.png) | ![Form galat](img/gambar2.png) | ![Pengaturan](img/gambar3.png) |
 
-| Pengaturan | Mode gelap | Tabungan negatif |
+| Laporan | Mode gelap |
 |---|---|---|
 | ![Laporan](img/gambar4.png) | ![Mode gelap](img/gambar5.png) | 
 ## Sintaks yang Digunakan
