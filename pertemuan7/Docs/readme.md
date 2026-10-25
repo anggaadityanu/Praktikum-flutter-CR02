@@ -51,17 +51,11 @@ Diuji pada emulator Android Studio: **Pixel 6, Android 14 (API 34)**.
 
 | Hari Ini | Form (pesan galat) | Laporan |
 |---|---|---|
-| (img/gambar1.png) | (img/gambar2.png) | (img/gambar3.png) |
+| ![Hari Ini](img/gambar1.png) | ![Form galat](img/gambar2.png) | ![Pengaturan](img/gambar3.png) |
 
 | Pengaturan | Mode gelap | Tabungan negatif |
 |---|---|---|
-| (img/gambar4.png) | (img/gambar5.png) | (img/gambar6.png) |
-| (docs/screenshots/04_pengaturan.png) | (docs/screenshots/05_mode_gelap.png) | (docs/screenshots/06_tabungan_negatif.png) |
-
-| Pencarian |
-|---|
-| (docs/screenshots/07_pencarian.png) |
-
+| ![Laporan](img/gambar4.png) | ![Mode gelap](img/gambar5.png) | 
 ## Sintaks yang Digunakan
 
 ### 1. Model data: `enum`, `factory`, dan `extension`
