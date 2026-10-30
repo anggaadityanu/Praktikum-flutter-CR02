@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kostify – Prototipe Mobile</title>
+<style>
+:root{--g:#1f6b55;--bg:#eef5f1;--card:#fff;--tx:#17302a;--mu:#6b8079;--ln:#d5e3dc;--soft:#dcefe6;--wr:#fdebd0;--wrt:#9a5b00;--er:#fde0e0;--ert:#b3261e;--out:#e3ece7;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--g:#2a8a6c;--bg:#0f1a16;--card:#17261f;--tx:#e6f2ec;--mu:#93aaa0;--ln:#2a3d34;--soft:#1f3a2f;--wr:#3a2f14;--wrt:#f0c070;--er:#3d1f1f;--ert:#f5a5a0;--out:#0b1411;color-scheme:dark}}
+:root[data-theme="dark"]{--g:#2a8a6c;--bg:#0f1a16;--card:#17261f;--tx:#e6f2ec;--mu:#93aaa0;--ln:#2a3d34;--soft:#1f3a2f;--wr:#3a2f14;--wrt:#f0c070;--er:#3d1f1f;--ert:#f5a5a0;--out:#0b1411;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--out);color:var(--tx);font:14px/1.4 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;justify-content:center;align-items:center;gap:28px;padding:12px}
+#idx{display:flex;flex-direction:column;gap:4px;width:210px}
+#idx h1{font-size:18px;color:var(--g);margin-bottom:6px}
+#idx p{font-size:12px;color:var(--mu);margin-bottom:8px}
+#idx button{all:unset;cursor:pointer;padding:6px 10px;border-radius:8px;font-size:13px}
+#idx button:hover{background:var(--soft)}
+#idx button.on{background:var(--g);color:#fff}
+.phone{width:390px;height:min(780px,calc(100dvh - 24px));max-width:100%;border:6px solid var(--g);border-radius:36px;background:var(--bg);overflow:hidden;position:relative}
+.screen{display:none;flex-direction:column;height:100%}
+.screen.on{display:flex}
+.hd{background:var(--g);color:#fff;padding:14px 16px;font-weight:700;font-size:16px;display:flex;align-items:center;gap:10px}
+.hd a{cursor:pointer;font-size:18px}
+.hd .r{margin-left:auto;cursor:pointer}
+.bd{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+nav{display:flex;background:var(--card);border-top:1px solid var(--ln)}
+nav a{flex:1;text-align:center;font-size:10px;color:var(--mu);padding:7px 0;cursor:pointer}
+nav a b{display:block;font-size:17px;filter:grayscale(1);opacity:.6}
+nav a.on{color:var(--g);font-weight:700}
+nav a.on b{filter:none;opacity:1}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:12px;padding:12px}
+.hero{background:var(--soft);border-radius:12px;padding:14px}
+.hero h2{font-size:17px;margin-bottom:10px}
+.btn{display:block;width:100%;background:var(--g);color:#fff;border:0;border-radius:10px;padding:11px;font:inherit;font-weight:700;text-align:center;cursor:pointer}
+.btn.o{background:transparent;color:var(--g);border:1.5px solid var(--g)}
+.btn.s{width:auto;display:inline-block;padding:8px 14px}
+.inp{width:100%;border:1px solid var(--ln);background:var(--card);color:var(--tx);border-radius:10px;padding:10px;font:inherit}
+.chips{display:flex;gap:8px}
+.chip{flex:1;border:1px solid var(--ln);background:var(--card);border-radius:8px;padding:8px;text-align:center;font-size:13px}
+.ph{background:var(--out);border:1px dashed var(--ln);border-radius:10px;display:grid;place-items:center;color:var(--mu);font-size:12px}
+.row{display:flex;gap:10px;align-items:center}
+.sp{justify-content:space-between}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;background:var(--soft);color:var(--g)}
+.tag.w{background:var(--wr);color:var(--wrt)}
+.tag.e{background:var(--er);color:var(--ert)}
+.mu{color:var(--mu);font-size:12px}
+.pr{color:var(--g);font-weight:700}
+.big{font-size:22px;font-weight:800}
+.go{cursor:pointer}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tabs{display:flex;gap:8px}
+.tabs button{flex:1;padding:9px;border-radius:10px;border:1px solid var(--ln);background:var(--card);color:var(--tx);font:inherit;font-weight:700;cursor:pointer}
+.tabs button.on{background:var(--g);color:#fff;border-color:var(--g)}
+.step{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--ln);border-radius:10px;padding:6px 10px;background:var(--card)}
+.step button{width:34px;height:34px;border-radius:8px;border:1px solid var(--ln);background:var(--card);color:var(--tx);font-size:18px;cursor:pointer}
+.chat{flex:1;display:flex;flex-direction:column;gap:8px}
+.b{max-width:78%;padding:9px 12px;border-radius:12px;background:var(--soft)}
+.b.me{align-self:flex-end;background:var(--card);border:1px solid var(--ln)}
+.send{display:flex;gap:8px;padding:10px;background:var(--card);border-top:1px solid var(--ln)}
+.send button{width:42px;border:0;border-radius:50%;background:var(--g);color:#fff;cursor:pointer}
+.bars{display:flex;align-items:flex-end;gap:8px;height:90px}
+.bars i{flex:1;background:var(--soft);border-radius:4px 4px 0 0}
+.bars i:last-child{background:var(--g)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--g);flex:none}
+.pa,.pb{display:flex;flex-direction:column;gap:10px}
+.pb{display:none}
+#toast{position:absolute;left:50%;bottom:80px;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:9px 16px;border-radius:20px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;white-space:nowrap}
+#toast.on{opacity:1}
+@media (max-width:760px){#idx{display:none}body{padding:0}.phone{border-width:0;border-radius:0;height:100dvh}}
+</style>
+</head>
+<body>
+<aside id="idx"><h1>Kostify</h1><p>Prototipe 12 halaman. Klik daftar ini atau langsung klik elemen di dalam layar.</p></aside>
+
+<main class="phone">
+
+<!-- 1 Beranda -->
+<section class="screen" id="s1">
+<div class="hd">Kostify</div>
+<div class="bd">
+<div class="hero"><h2>Temukan Kos Impianmu</h2><button class="btn s" data-go="s2">Cari Kamar Sekarang</button></div>
+<input class="inp" placeholder="Cari lokasi / nama properti">
+<div class="chips"><div class="chip">Kota</div><div class="chip">Tipe</div><div class="chip">Harga</div></div>
+<div class="card row go" data-go="s2"><div class="ph" style="width:80px;height:70px">Foto</div><div><b>Kamar A-01</b><div class="mu">Kos Melati · Jakarta</div><div class="pr">Rp 1.500.000/bln</div><span class="tag">Tersedia</span></div></div>
+<div class="card row go" data-go="s2"><div class="ph" style="width:80px;height:70px">Foto</div><div><b>Kamar A-02</b><div class="mu">Kos Melati · Jakarta</div><div class="pr">Rp 1.500.000/bln</div><span class="tag">Tersedia</span></div></div>
+</div>
+<nav data-n="u:0"></nav>
+</section>
+
+<!-- 2 Detail Kamar -->
+<section class="screen" id="s2">
+<div class="hd"><a data-go="s1">←</a>Detail Kamar</div>
+<div class="bd">
+<div class="ph" style="height:150px">Galeri Foto</div>
+<div><b style="font-size:17px">Kamar A-01 · Kos Melati</b><div class="pr">Rp 1.500.000 / bulan</div></div>
+<div class="chips"><div class="chip">AC</div><div class="chip">WiFi</div><div class="chip">KM Dalam</div></div>
+<b>Lokasi Properti</b>
+<div class="ph" style="height:110px">Peta (Google Maps)</div>
+<button class="btn" data-go="s3">Booking Sekarang</button>
+</div>
+</section>
+
+<!-- 3 Booking -->
+<section class="screen" id="s3">
+<div class="hd"><a data-go="s2">←</a>Booking Kamar</div>
+<div class="bd">
+<div class="card row"><div class="ph" style="width:60px;height:50px">Foto</div><div><b>Kamar A-01</b><div class="pr">Rp 1.500.000/bln</div></div></div>
+<label class="mu">Tanggal masuk</label>
+<input class="inp" type="date" value="2026-11-01">
+<label class="mu">Durasi sewa (bulan)</label>
+<div class="step"><button data-step="-1">−</button><b id="dur">3</b><button data-step="1">+</button></div>
+<label class="mu">Catatan (opsional)</label>
+<input class="inp">
+<div class="hero"><div class="mu">Estimasi biaya</div><div id="calc" class="mu">3 bln × Rp 1.500.000</div><div class="row sp"><b>Total</b><b id="tot" class="pr">Rp 4.500.000</b></div></div>
+<button class="btn" data-go="s4" data-toast="Booking terkirim, menunggu verifikasi">Kirim Booking</button>
+</div>
+<nav data-n="u:1"></nav>
+</section>
+
+<!-- 4 Tagihan -->
+<section class="screen" id="s4">
+<div class="hd">Tagihan</div>
+<div class="bd">
+<div class="tabs"><button class="on" data-tab="pa">Belum Dibayar</button><button data-tab="pb">Lunas</button></div>
+<div class="pa">
+<div class="card"><div class="row sp"><b>INV-202611-001</b><span class="tag w">Belum Bayar</span></div><div class="mu">Booking BK2026-001 · Kamar A-01</div><div class="big pr">Rp 4.500.000</div><div style="color:var(--ert);font-size:12px;margin:4px 0 8px">Jatuh tempo: 2 hari lagi</div><button class="btn" data-toast="Membuka Midtrans Snap…">Bayar Sekarang (Midtrans)</button></div>
+</div>
+<div class="pb">
+<div class="card"><div class="row sp"><b>INV-202610-004</b><span class="tag">Lunas</span></div><div class="mu">Booking BK2026-001 · Kamar A-01</div><div class="big pr">Rp 1.500.000</div><button class="btn o" style="margin-top:8px" data-toast="Invoice PDF diunduh">Unduh Invoice PDF</button></div>
+</div>
+</div>
+<nav data-n="u:2"></nav>
+</section>
+
+<!-- 5 Chat Keluhan -->
+<section class="screen" id="s5">
+<div class="hd"><a data-go="s1">←</a>TKT-2026-001</div>
+<div class="bd">
+<div class="row sp"><b>AC tidak dingin</b><span class="tag w">In Progress</span></div>
+<div class="chat" data-chat="u">
+<div class="b me">Halo, AC Kamar A-01 belum dingin sejak kemarin</div>
+<div class="b">Baik, teknisi kami datang besok pagi ya.</div>
+<div class="b me">Siap, terima kasih!</div>
+<div class="b">Mohon ditunggu kabar selanjutnya.</div>
+</div>
+</div>
+<div class="send"><input class="inp" placeholder="Tulis pesan…"><button>➤</button></div>
+<nav data-n="u:3"></nav>
+</section>
+
+<!-- 6 Profil -->
+<section class="screen" id="s6">
+<div class="hd">Profil &amp; Dokumen</div>
+<div class="bd">
+<div style="text-align:center"><div class="ph" style="width:72px;height:72px;border-radius:50%;margin:0 auto 6px">👤</div><b>Nama Penyewa</b></div>
+<label class="mu">NIK</label><input class="inp" value="3175••••••••••">
+<label class="mu">No. Telepon</label><input class="inp" value="0812••••••••">
+<div class="grid"><div class="ph go" style="height:90px;text-align:center" data-toast="Buka kamera / galeri">📷 Foto KTP</div><div class="ph go" style="height:90px;text-align:center" data-toast="Buka kamera / galeri">📷 Foto KK</div></div>
+<div class="tag" style="padding:8px">✓ Profil lengkap — Siap booking</div>
+<button class="btn" data-toast="Profil disimpan">Simpan Profil</button>
+<button class="btn o" data-go="s7">Masuk sebagai Admin</button>
+<button class="btn o" data-go="s11">Masuk sebagai Pemilik Usaha</button>
+</div>
+<nav data-n="u:4"></nav>
+</section>
+
+<!-- 7 Dashboard Admin -->
+<section class="screen" id="s7">
+<div class="hd">Dashboard Admin<span class="r" data-go="s1" style="font-size:12px">Keluar</span></div>
+<div class="bd">
+<div class="grid"><div class="card"><div class="mu">Properti</div><div class="big">4</div></div><div class="card"><div class="mu">Kamar</div><div class="big">32</div></div><div class="card go" data-go="s8"><div class="mu">Booking Aktif</div><div class="big">21</div></div><div class="card go" data-go="s9"><div class="mu">Pendapatan</div><div class="big">31 jt</div></div></div>
+<b>Pendapatan 6 bulan terakhir</b>
+<div class="bars"><i style="height:30%"></i><i style="height:55%"></i><i style="height:60%"></i><i style="height:50%"></i><i style="height:70%"></i><i style="height:100%"></i></div>
+<b>Tagihan Menunggak (2)</b>
+<div class="card row sp go" data-go="s9"><span>Budi - Kamar B-02</span><b>Rp 1,5 jt</b></div>
+<div class="card row sp go" data-go="s9"><span>Budi - Kamar B-03</span><b>Rp 1,5 jt</b></div>
+</div>
+<nav data-n="a:0"></nav>
+</section>
+
+<!-- 8 Verifikasi Booking -->
+<section class="screen" id="s8">
+<div class="hd"><a data-go="s7">←</a>BK-2026-001</div>
+<div class="bd">
+<span class="tag w" style="align-self:flex-start">Pending</span>
+<div><div class="mu">Penyewa</div><b>Budi Santoso · 0812•••••</b></div>
+<div><div class="mu">Kamar &amp; Durasi</div><b>A-01 · 3 bulan · 01 Nov 2026</b></div>
+<div><div class="mu">Total</div><b class="pr">Rp 4.500.000</b></div>
+<b>Dokumen Identitas</b>
+<div class="grid"><div class="ph" style="height:90px">KTP</div><div class="ph" style="height:90px">KK</div></div>
+<div class="mu">Catatan penyewa: —</div>
+<div class="grid" style="margin-top:auto"><button class="btn o" data-go="s7" data-toast="Booking ditolak">Tolak</button><button class="btn" data-go="s9" data-toast="Booking disetujui">Setuju</button></div>
+</div>
+<nav data-n="a:1"></nav>
+</section>
+
+<!-- 9 Konfirmasi Pembayaran -->
+<section class="screen" id="s9">
+<div class="hd"><a data-go="s7">←</a>Pembayaran</div>
+<div class="bd">
+<div class="card row sp"><div><b>INV-202611-001</b><div class="mu">Rp 4.500.000 · Budi</div></div><span class="tag w">Pending</span></div>
+<div class="card row sp"><div><b>INV-202610-002</b><div class="mu">Rp 4.500.000 · Budi</div></div><span class="tag e">Unpaid</span></div>
+<div class="card row sp"><div><b>INV-202610-004</b><div class="mu">Rp 4.500.000 · Budi</div></div><span class="tag">Paid</span></div>
+<div class="hero"><b>INV-202611-001</b><div class="mu" style="margin:6px 0 10px">Metode: Transfer Bank<br>Jatuh tempo: 26 Okt 2026<br>ID Midtrans: ••••••••</div><button class="btn" data-toast="Pembayaran dikonfirmasi">Konfirmasi Manual</button></div>
+</div>
+<nav data-n="a:2"></nav>
+</section>
+
+<!-- 10 Keluhan Admin -->
+<section class="screen" id="s10">
+<div class="hd"><a data-go="s7">←</a>TKT-2026-001</div>
+<div class="bd">
+<b>AC kamar A-01 belum dingin · Prioritas Tinggi</b>
+<select class="inp"><option>Status: In Progress</option><option>Status: Open</option><option>Status: Resolved</option></select>
+<div class="chat" data-chat="a">
+<div class="b">AC kamar A-01 belum dingin sejak kemarin</div>
+<div class="b me">Baik, teknisi datang besok pagi ya.</div>
+<div class="b">Siap, terima kasih!</div>
+</div>
+</div>
+<div class="send"><input class="inp" placeholder="Tulis pesan…"><button>➤</button></div>
+<nav data-n="a:3"></nav>
+</section>
+
+<!-- 11 Dashboard Pemilik -->
+<section class="screen" id="s11">
+<div class="hd">Ringkasan Usaha<span class="r" data-go="s12">🔔</span><span data-go="s1" style="cursor:pointer;font-size:12px">Keluar</span></div>
+<div class="bd">
+<div class="hero" style="background:var(--g);color:#fff"><div style="opacity:.85">Pendapatan bulan ini</div><div class="big">Rp 31.500.000</div></div>
+<div class="grid"><div class="card"><div class="mu">Kamar terisi</div><div class="big">21 / 32</div></div><div class="card"><div class="mu">Keluhan terbuka</div><div class="big">3</div></div></div>
+<b>Booking terbaru</b>
+<div class="card row sp go" data-go="s8"><span>BK-2026-012 · A-03</span><span class="tag">Aktif</span></div>
+<div class="card row sp go" data-go="s8"><span>BK-2026-011 · B-02</span><span class="tag w">Pending</span></div>
+<div class="card row sp go" data-go="s8"><span>BK-2026-010 · A-01</span><span class="tag">Aktif</span></div>
+<div class="mu">Hanya data properti milik Anda</div>
+</div>
+<nav data-n="o:0"></nav>
+</section>
+
+<!-- 12 Notifikasi -->
+<section class="screen" id="s12">
+<div class="hd"><a data-go="s11">←</a>Notifikasi</div>
+<div class="bd">
+<div class="card row go" data-go="s8"><i class="dot"></i><div><b>Booking baru BK-2026-012</b><div class="mu">2 menit lalu</div></div></div>
+<div class="card row go" data-go="s9"><i class="dot"></i><div><b>Pembayaran masuk INV-001</b><div class="mu">1 jam lalu</div></div></div>
+<div class="card row go" data-go="s10"><i class="dot"></i><div><b>Keluhan baru TKT-2026-004</b><div class="mu">3 jam lalu</div></div></div>
+<div class="card row go" data-go="s9"><i class="dot"></i><div><b>Tagihan B-02 jatuh tempo besok</b><div class="mu">Kemarin</div></div></div>
+</div>
+<nav data-n="o:4"></nav>
+</section>
+
+<div id="toast"></div>
+</main>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const T=['Beranda & Cari Kamar','Detail Kamar','Form Booking','Tagihan & Pembayaran','Chat Keluhan','Profil & Unggah KTP/KK','Dashboard Admin','Verifikasi Booking','Konfirmasi Pembayaran','Keluhan & Chat (Admin)','Dashboard Pemilik Usaha','Notifikasi Push'];
+const N={u:[['🏠','Beranda','s1'],['📋','Booking','s3'],['🧾','Tagihan','s4'],['💬','Keluhan','s5'],['👤','Profil','s6']],
+a:[['📊','Dashboard','s7'],['📋','Booking','s8'],['💳','Bayar','s9'],['💬','Keluhan','s10'],['👥','Penyewa','s6']],
+o:[['📊','Dashboard','s11'],['🏢','Properti','s2'],['📋','Booking','s8'],['💰','Pendapatan','s9'],['🔔','Notifikasi','s12']]};
+$$('nav[data-n]').forEach(n=>{const[k,a]=n.dataset.n.split(':');n.innerHTML=N[k].map(([i,l,t],x)=>`<a data-go="${t}" class="${x==a?'on':''}"><b>${i}</b>${l}</a>`).join('')});
+$('#idx').insertAdjacentHTML('beforeend',T.map((t,i)=>`<button data-go="s${i+1}">${i+1}. ${t}</button>`).join(''));
+function go(id){
+ if(!$('#'+id))id='s1';
+ $$('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
+ $$('#idx button').forEach(b=>b.classList.toggle('on',b.dataset.go===id));
+ const b=$('#'+id+' .bd');if(b)b.scrollTop=0;
+ try{history.replaceState(null,'','#'+id)}catch(e){}
+}
+let tt;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1800)}
+document.addEventListener('click',e=>{
+ const el=e.target.closest('[data-go],[data-toast],[data-step],[data-tab]');if(!el)return;
+ if(el.dataset.toast)toast(el.dataset.toast);
+ if(el.dataset.go)go(el.dataset.go);
+ if(el.dataset.step){const d=$('#dur');const n=Math.min(12,Math.max(1,+d.textContent+ +el.dataset.step));d.textContent=n;
+  $('#calc').textContent=n+' bln × Rp 1.500.000';$('#tot').textContent='Rp '+(n*1500000).toLocaleString('id-ID')}
+ if(el.dataset.tab){const p=el.closest('.bd');p.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b===el));
+  p.querySelector('.pa').style.display=el.dataset.tab==='pa'?'flex':'none';p.querySelector('.pb').style.display=el.dataset.tab==='pb'?'flex':'none'}
+});
+$$('.send').forEach(s=>{
+ const inp=s.querySelector('input'),sec=s.closest('.screen'),send=()=>{
+  const v=inp.value.trim();if(!v)return;
+  const c=sec.querySelector('.chat'),d=document.createElement('div');d.className='b me';d.textContent=v;c.appendChild(d);inp.value='';
+  c.parentElement.scrollTop=c.parentElement.scrollHeight};
+ s.querySelector('button').onclick=send;inp.onkeydown=e=>{if(e.key==='Enter')send()};
+});
+go(location.hash.slice(1)||'s1');
+addEventListener('hashchange',()=>go(location.hash.slice(1)));
+</script>
+</body>
+</html>
