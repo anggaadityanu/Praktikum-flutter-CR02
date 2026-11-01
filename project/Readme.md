@@ -35,7 +35,7 @@ Prototipe ini fokus pada sisi **penyewa**. Semua data masih berupa data contoh (
 | Dokumen | Tautan |
 |---|---|
 | Desain Figma | **https://www.figma.com/design/sAI1qnUWXlhOGgyBFGE1wl/Untitled?node-id=33-1965&t=WTYoDA8ZHwT5iXcR-1** |
-| Alur Figma | **figma.com/proto/sAI1qnUWXlhOGgyBFGE1wl/Untitled?node-id=0-1&p=f&t=lZQR4CvgOQg5slWs-0&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1&starting-point-node-id=33%3A1964&fuid=1580874850967824840**  |
+| Alur Figma | **https://www.figma.com/proto/sAI1qnUWXlhOGgyBFGE1wl/Untitled?node-id=0-1&p=f&t=lZQR4CvgOQg5slWs-0&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1&starting-point-node-id=33%3A1964&fuid=1580874850967824840** |
 | Business Requirement Document | [BRD Kostify Mobile.pdf](BRD%20Kostify%20Mobile.pdf) |
 | Product Requirement Document | [PRD Kostify Mobile.pdf](PRD%20Kostify%20Mobile.pdf) |
 ---
