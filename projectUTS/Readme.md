@@ -143,8 +143,8 @@ Prototipe ini fokus pada sisi **penyewa**. Semua data masih berupa data contoh (
 
 ```bash
 # 1. Clone repositori
-git clone <URL-REPOSITORI>
-cd <NAMA-REPOSITORI>/prototype_kostify
+git clone https://github.com/anggaadityanu/Praktikum-flutter-CR02.git
+cd Praktikum-flutter-CR02/projectUTS/prototype_kostify
 
 # 2. Unduh dependensi
 flutter pub get
