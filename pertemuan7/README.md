@@ -51,14 +51,14 @@ Diuji pada emulator Android Studio: **Pixel 6, Android 14 (API 34)**.
 
 <table>
   <tr>
-    <td align="center"><img src="img/gambar1.png" width="220"><br><sub>Hari Ini: daftar kegiatan</sub></td>
-    <td align="center"><img src="img/gambar2.png" width="220"><br><sub>Laporan Hari Ini</sub></td>
-    <td align="center"><img src="img/gambar3.png" width="220"><br><sub>Pengaturan (mode terang)</sub></td>
+    <td align="center"><img src="Docs/img/gambar1.png" width="220"><br><sub>Hari Ini: daftar kegiatan</sub></td>
+    <td align="center"><img src="Docs/img/gambar2.png" width="220"><br><sub>Laporan Hari Ini</sub></td>
+    <td align="center"><img src="Docs/img/gambar3.png" width="220"><br><sub>Pengaturan (mode terang)</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="img/gambar4.png" width="220"><br><sub>Laporan</sub></td>
-    <td align="center"><img src="img/gambar5.png" width="220"><br><sub>Pengaturan (mode gelap)</sub></td>
-    <td align="center"><img src="img/gambar6.png" width="220"><br><sub>cari kegiatan</sub></td>
+    <td align="center"><img src="Docs/img/gambar4.png" width="220"><br><sub>Laporan</sub></td>
+    <td align="center"><img src="Docs/img/gambar5.png" width="220"><br><sub>Pengaturan (mode gelap)</sub></td>
+    <td align="center"><img src="Docs/img/gambar6.png" width="220"><br><sub>cari kegiatan</sub></td>
   </tr>
 </table>
 

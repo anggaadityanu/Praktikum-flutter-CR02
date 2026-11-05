@@ -83,9 +83,9 @@ Saat database mati (`503`):
 
 <table>
   <tr>
-    <td align="center"><img src="img/gambar1.png" width="360"><br><sub>Dokumentasi Swagger (/docs) TabungKu API</sub></td>
-    <td align="center"><img src="img/gambar2.png" width="200"><br><sub>Status Server (versi praktikum)</sub></td>
-    <td align="center"><img src="img/gambar3.png" width="200"><br><sub>Status Server (versi tugas): API dan Database terpisah</sub></td>
+    <td align="center"><img src="Docs/img/gambar1.png" width="360"><br><sub>Dokumentasi Swagger (/docs) TabungKu API</sub></td>
+    <td align="center"><img src="Docs/img/gambar2.png" width="200"><br><sub>Status Server (versi praktikum)</sub></td>
+    <td align="center"><img src="Docs/img/gambar3.png" width="200"><br><sub>Status Server (versi tugas): API dan Database terpisah</sub></td>
   </tr>
 </table>
 
