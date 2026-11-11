@@ -8,7 +8,7 @@ Layar **Ringkasan Tabungan** untuk aplikasi TabungKu, disusun hanya dengan widge
 |---|---|
 | **Nama** | Angga Aditya Nugraha |
 | **NIM** | 20240801165 |
-| **Mata kuliah** | CIE511 – Pemrograman Mobile |
+| **Mata kuliah** | TI505 – Pemrograman Mobile |
 | **Tugas** | Minggu 3 - Menyusun Layout dengan Widget Dasar Flutter |
 | **Nama Proyek** | TabungKu Layout |
 
