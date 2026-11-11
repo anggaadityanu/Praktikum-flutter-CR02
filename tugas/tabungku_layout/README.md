@@ -2,18 +2,16 @@
 
 Layar **Ringkasan Tabungan** untuk aplikasi TabungKu, disusun hanya dengan widget dasar Flutter tanpa paket pihak ketiga.
 
-![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white)
-![Dart](https://img.shields.io/badge/Dart-0175C2?logo=dart&logoColor=white)
-![Status](https://img.shields.io/badge/Tugas-Minggu%203-teal)
-
 ## Data Mahasiswa
 
-| | |
+| **Keterangan** | **Informasi** |
 |---|---|
 | **Nama** | Angga Aditya Nugraha |
 | **NIM** | 20240801165 |
 | **Mata kuliah** | CIE511 – Pemrograman Mobile |
 | **Tugas** | Minggu 3 - Menyusun Layout dengan Widget Dasar Flutter |
+| **Nama Proyek** | TabungKu Layout |
+
 
 ## Ringkasan
 
