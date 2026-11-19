@@ -1,559 +1,567 @@
-# TabungKu Cloud: REST API Kegiatan dan Laporan
+# TabungKu Cloud: Integrasi Flutter dengan API
 
-Mini proyek Pemrograman Mobile, Pertemuan 9: REST API CRUD dengan FastAPI,
-SQLAlchemy, Pydantic, dan Alembic, ditambah endpoint laporan dan lapisan
-layanan API di Flutter.
+Mini proyek Pemrograman Mobile, Pertemuan 11: aplikasi TabungKu kini memakai
+data dari server lewat **repository pattern**, lengkap dengan penanganan
+galat, target tabungan yang tersimpan di akun, dan mode offline sederhana.
 
 ## Identitas
 
 | | |
 |---|---|
-| Nama | Aga |
+| Nama | Angga Aditya Nugraha |
 | NIM | 20240801165 |
 | Program Studi | Teknik Informatika, Universitas Esa Unggul |
 | Mata Kuliah | Pemrograman Mobile (CIE511) |
-| Tugas | Pertemuan 9: REST API CRUD, Migrasi Alembic, dan Endpoint Laporan |
+| Tugas | Pertemuan 11: Integrasi Flutter dengan API (Repository Pattern) |
 
 ## Apa yang dibangun?
 
-Pada Pertemuan 8, server TabungKu baru bisa menjawab "apakah saya hidup?"
-(`/health`). Pertemuan 9 membuat server benar-benar **menyimpan dan mengelola
-data kegiatan**:
+Pada Pertemuan 7 semua halaman memanggil SQLite (`DbHelper`) secara langsung,
+dan pada Pertemuan 9 sampai 10 server serta lapisan `KegiatanApi`,
+`LaporanApi`, dan login sudah ada tetapi belum dipakai layar. Pertemuan 11
+menyambungkan keduanya tanpa menyebarkan detail HTTP ke seluruh tampilan:
 
-- tabel `kegiatan` di MySQL, dibuat lewat **migrasi Alembic** (bukan SQL manual),
-- API REST untuk membuat, membaca, mengganti, mengubah sebagian, dan menghapus kegiatan,
-- **aturan bisnis TabungKu** dari Pertemuan 7 dipindahkan ke server dengan Pydantic,
-- **endpoint laporan** harian dan rentang yang seluruh angkanya dihitung di SQL,
-- di Flutter, **lapisan layanan** (`KegiatanApi`, `LaporanApi`) yang diuji
-  dengan `MockClient`. Tampilan aplikasi belum diubah (masih SQLite); lapisan
-  ini baru dipasang ke UI pada Pertemuan 11.
+- halaman hanya mengenal satu **kontrak abstrak** `KegiatanRepository`,
+- dua implementasinya: `ApiKegiatanRepository` (server) dan `SqliteKegiatanRepository` (SQLite pertemuan 7), yang dipilih dengan `--dart-define=MODE_DATA=lokal`,
+- setiap halaman menangani tiga keadaan: **memuat**, **galat** (dengan tombol *Coba lagi*), dan **data**, ditambah tarik untuk menyegarkan,
+- operasi tulis yang gagal **tidak menutup form** sehingga isian tidak hilang,
+- **target tabungan harian** pindah dari HP ke akun di server,
+- **mode offline** *network first*: data terakhir yang berhasil dimuat tetap tampil saat server tidak terjangkau, lengkap dengan banner.
 
 ```
-Flutter (KegiatanApi, LaporanApi)
-        |  HTTP/JSON
+UI (Hari Ini, Laporan, Form, Cari)
+        |  hanya mengenal kontrak
         v
-FastAPI  --  routers: /kegiatan, /laporan, /health
-        |    schemas (Pydantic): validasi aturan bisnis
-        |    models (SQLAlchemy): pemetaan tabel
-        v
-MySQL 8.4  <--  skema dikelola Alembic (revisi bernomor)
+abstract class KegiatanRepository
+   /                              \
+ApiKegiatanRepository        SqliteKegiatanRepository
+ KegiatanApi + LaporanApi         DbHelper (SQLite)
+        |
+   CacheClient  (cadangan saat offline)
+        |
+   ApiClient    (header Authorization + pembaruan token otomatis)
+        |
+     FastAPI
 ```
 
 ## Fitur
 
-### Backend
+### Repository dan penanganan galat (bagian A sampai E)
 
-- CRUD lengkap `/kegiatan`: `GET` (daftar dan detail), `POST`, `PUT`, `PATCH`, `DELETE`
-- Filter daftar: `tanggal`, `tipe`, `selesai`, `q` (cari judul), urutan `urut`, dan pagination `limit`/`offset`
-- Header `X-Total-Count` berisi jumlah seluruh data sebelum dipotong `limit`
-- Validasi aturan bisnis di server; data yang melanggar dibalas **422**
-- `PATCH` memvalidasi ulang data gabungan agar aturan bisnis tetap berlaku
-- Migrasi Alembic otomatis dijalankan saat container API menyala (`start.sh`)
-- Laporan harian dan laporan rentang dihitung di SQL, bukan dengan perulangan Python
+- Kontrak `KegiatanRepository` dan dua implementasi yang dapat ditukar tanpa mengubah halaman
+- Komponen `GalatView` yang dipakai ulang: galat dari server menampilkan pesan server, galat lain dianggap masalah koneksi
+- Halaman Hari Ini dan Laporan mengambil dua data sekaligus dengan `Future.wait`; Laporan kini cukup **2 request** (dulu 9 query SQLite)
+- Tarik untuk menyegarkan (`RefreshIndicator`) di Hari Ini dan Laporan
+- Operasi tulis (centang, hapus, simpan) yang gagal menampilkan SnackBar; form tetap terbuka, dan tombol Simpan tidak bisa ditekan dua kali
+- `versiData` hanya dinaikkan **setelah** server menjawab berhasil
 
-### Flutter
+### Latihan mandiri
 
-- `Kegiatan.toJson/fromJson` dan `Ringkasan.fromJson`
-- `ApiException` yang menerjemahkan galat FastAPI menjadi pesan siap tampil
-- `KegiatanApi` (daftar, tambah, ubah, setSelesai, hapus) dan `LaporanApi` (harian, rentang)
-- 21 unit test dengan `MockClient`, tanpa server dan tanpa Docker
+1. Garis progres tipis di atas daftar saat data **dimuat ulang**
+2. *Optimistic update* pada centang (tampilan berubah dulu, dikembalikan bila server menolak)
+3. Tombol ukur waktu di Laporan: membandingkan dua request berurutan dengan `Future.wait`
+4. Kolom cari judul di Hari Ini yang mengirim parameter `q` ke server
 
-## Aturan bisnis (divalidasi di server)
+### Tugas
 
-| Jenis | `nominal` | `kategori` |
-|---|---|---|
-| `tanpa` | dibersihkan menjadi `0` | dibersihkan menjadi `-` |
-| `pemasukan` | wajib lebih dari 0 | dibersihkan menjadi `-` |
-| `pengeluaran` | wajib lebih dari 0 | wajib salah satu: Makan, Transport, Belajar, Hiburan, Lainnya |
+- **(a) Target tabungan di server.** `PATCH /users/me` di backend; slider Pengaturan menyimpan ke server (dikembalikan bila gagal); `targetHarian` mengikuti akun yang login, jadi dua akun di satu HP punya target sendiri
+- **(b) Mode offline *network first*.** `CacheStore` (SQLite dan memori), `CacheClient` yang membungkus `ApiClient`, kunci cache yang memuat id pengguna, cache dihapus saat keluar, dan banner "Offline" di atas halaman utama
 
-Selain itu `judul` wajib diisi (spasi saja ditolak) dan `tanggal` harus berformat `YYYY-MM-DD`.
+## Endpoint baru
 
-## Endpoint API
-
-### Kegiatan
-
-| Metode | Alamat | Fungsi | Kode sukses |
+| Metode | Alamat | Fungsi | Kode |
 |---|---|---|---|
-| GET | `/kegiatan` | Daftar kegiatan (filter dan pagination) | 200 |
-| GET | `/kegiatan/{id}` | Detail satu kegiatan | 200 |
-| POST | `/kegiatan` | Tambah kegiatan | 201 |
-| PUT | `/kegiatan/{id}` | Ganti seluruh isi kegiatan | 200 |
-| PATCH | `/kegiatan/{id}` | Ubah sebagian field | 200 |
-| DELETE | `/kegiatan/{id}` | Hapus kegiatan | 204 |
+| PATCH | `/users/me` | Ubah `nama` dan/atau `target_harian` (0 sampai 10.000.000); nilai `null` dianggap tidak dikirim | 200, 401, 422 |
 
-Parameter `GET /kegiatan`:
-
-| Parameter | Isi |
-|---|---|
-| `tanggal` | `YYYY-MM-DD`, hanya kegiatan pada tanggal itu |
-| `tipe` | `tanpa`, `pemasukan`, atau `pengeluaran` |
-| `selesai` | `true` atau `false` |
-| `q` | kata yang dicari di judul |
-| `urut` | `terbaru` atau `terlama` (menurut tanggal lalu id). Kosong: belum selesai di atas |
-| `limit`, `offset` | pagination (`limit` 1 sampai 200, bawaan 50) |
-
-### Laporan
-
-| Metode | Alamat | Fungsi |
-|---|---|---|
-| GET | `/laporan/harian?tanggal=YYYY-MM-DD` | Ringkasan satu hari dan pengeluaran per kategori |
-| GET | `/laporan/rentang?mulai=...&sampai=...` | Ringkasan setiap hari dalam rentang, termasuk hari tanpa kegiatan (bernilai 0) |
-
-`/laporan/rentang` membalas **400** bila `sampai` lebih awal dari `mulai` atau rentang lebih dari 31 hari.
-
-Contoh balasan `GET /laporan/harian?tanggal=2026-10-06` untuk data "Contoh Skenario Satu Hari":
-
-```json
-{
-  "tanggal": "2026-10-06",
-  "jumlah_kegiatan": 4,
-  "selesai": 2,
-  "pemasukan": 50000,
-  "pengeluaran": 25000,
-  "tabungan": 25000,
-  "per_kategori": [
-    {"kategori": "Makan", "total": 15000},
-    {"kategori": "Transport", "total": 10000}
-  ]
-}
-```
-
-### Lainnya
-
-| Metode | Alamat | Fungsi |
-|---|---|---|
-| GET | `/health` | `200` bila API dan database sehat, `503` bila database mati |
-| GET | `/info` | Nama, versi, dan zona waktu server |
-| GET | `/docs` | Dokumentasi Swagger |
+Endpoint lain tidak berubah dari Pertemuan 10.
 
 ## Sintaks yang Digunakan
 
-### 1. Model SQLAlchemy 2 (`models.py`)
+### 1. Kontrak repository dan pemilihan sumber data
 
-```python
-class Tipe(str, enum.Enum):
-    tanpa = "tanpa"
-    pemasukan = "pemasukan"
-    pengeluaran = "pengeluaran"
+```dart
+const modeData = String.fromEnvironment('MODE_DATA', defaultValue: 'api');
 
+abstract class KegiatanRepository {
+  Future<List<Kegiatan>> pada(String tanggal, {String q = ''});
+  Future<Ringkasan> ringkasan(String tanggal);
+  Future<LaporanHarian> laporanHarian(String tanggal);
+  Future<List<RingkasanHari>> rentang(DateTime mulai, DateTime sampai);
+  Future<void> tambah(Kegiatan k);
+  Future<void> setSelesai(Kegiatan k, bool selesai);
+  Future<void> hapus(int id);
+  // ...
+}
 
-class Kegiatan(Base):
-    __tablename__ = "kegiatan"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    judul: Mapped[str] = mapped_column(String(100))
-    tanggal: Mapped[date] = mapped_column(Date, index=True)
-    selesai: Mapped[bool] = mapped_column(default=False)
-    tipe: Mapped[Tipe] = mapped_column(Enum(Tipe), default=Tipe.tanpa)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now()
-    )
+KegiatanRepository repo = modeData == 'lokal'
+    ? SqliteKegiatanRepository()
+    : ApiKegiatanRepository();
 ```
 
-- Tiap kelas model mewakili satu tabel, dan tiap atribut mewakili satu kolom, sehingga `db.add(k)` menggantikan `INSERT` manual.
-- `Mapped[tipe]` menyatakan tipe Python kolom; `mapped_column(...)` menambahkan detail (panjang teks, indeks, nilai bawaan).
-- `Tipe(str, enum.Enum)` membatasi jenis kegiatan pada tiga nilai dan tersimpan sebagai kolom `ENUM` di MySQL.
-- `index=True` pada `tanggal` mempercepat query yang menyaring per tanggal.
-- `server_default=func.now()` membuat database yang mengisi waktu saat baris dibuat, dan `onupdate` memperbarui `updated_at` setiap kali baris diubah lewat ORM.
+- `abstract class` menetapkan daftar pekerjaan tanpa isinya; kelas yang `implements` wajib mengisi semuanya, dan `flutter analyze` memberi galat bila ada yang terlewat.
+- Halaman hanya memanggil `repo`, tidak tahu apakah di baliknya SQLite atau HTTP (*polimorfisme*).
+- `String.fromEnvironment` membaca nilai dari `flutter run --dart-define=MODE_DATA=lokal`, sehingga sumber data bisa ditukar tanpa mengubah kode.
+- `repo` adalah variabel biasa, jadi test bisa menggantinya dengan repository palsu.
 
-### 2. Session per request (`database.py`)
+### 2. Dua implementasi dan `versiData`
 
-```python
-engine = create_engine(
-    settings.database_url,
-    pool_pre_ping=True,
-    connect_args={"connect_timeout": 3},
+```dart
+class ApiKegiatanRepository implements KegiatanRepository {
+  final KegiatanApi _kegiatan;
+  final LaporanApi _laporan;
+
+  ApiKegiatanRepository({KegiatanApi? kegiatan, LaporanApi? laporan})
+      : _kegiatan = kegiatan ?? KegiatanApi(),
+        _laporan = laporan ?? LaporanApi();
+
+  @override
+  Future<List<RingkasanHari>> rentang(DateTime mulai, DateTime sampai) =>
+      _laporan.rentang(kunciTanggal(mulai), kunciTanggal(sampai));
+
+  @override
+  Future<void> tambah(Kegiatan k) async {
+    await _kegiatan.tambah(k);
+    versiData.value++;
+  }
+}
+```
+
+- Konstruktor menerima `KegiatanApi` dan `LaporanApi` opsional (*dependency injection*) agar bisa diuji dengan `MockClient`.
+- API memakai **satu request** `/laporan/rentang` untuk 7 hari, sedangkan `SqliteKegiatanRepository` menjalankan satu query per hari.
+- `versiData` adalah `ValueNotifier<int>`; halaman mendengarkannya dan memuat ulang data. Kenaikannya diletakkan **setelah** `await` berhasil, sehingga bila server menolak, pengecualian dilempar lebih dulu dan tampilan tidak dimuat ulang tanpa alasan.
+
+### 3. Tiga keadaan data jaringan
+
+```dart
+FutureBuilder<DataHari>(
+  future: _future,
+  builder: (context, snapshot) {
+    final belumSelesai = snapshot.connectionState != ConnectionState.done;
+    if (belumSelesai && !snapshot.hasData) {
+      return const SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (snapshot.hasError) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: GalatView(galat: snapshot.error!, onCobaLagi: _muat),
+      );
+    }
+    final data = snapshot.data!;
+    // ... tampilkan data
+  },
 )
-SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
-
-
-class Base(DeclarativeBase):
-    """Kelas induk semua model tabel."""
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 ```
 
-- `get_db` adalah fungsi *generator*: kode sebelum `yield` menyiapkan session, dan blok `finally` selalu menutupnya walau terjadi galat.
-- Endpoint memakainya lewat `db: Session = Depends(get_db)`, sehingga FastAPI menyiapkan satu session baru untuk setiap request.
-- `expire_on_commit=False` membuat objek tetap bisa dibaca setelah `commit()`.
-- `connect_timeout` membuat API cepat menyerah (3 detik) bila MySQL mati.
+- Pola tiga keadaan: **memuat**, **galat**, dan **data**.
+- `FutureBuilder` mempertahankan data lama selama `Future` baru berjalan, jadi memuat pertama kali (belum ada data, lingkaran penuh) dapat dibedakan dari memuat ulang (data ada tetapi belum selesai).
+- Syarat `belumSelesai && !hasData` didahulukan agar tombol *Coba lagi* langsung memberi umpan balik: yang tampil adalah lingkaran, bukan galat lama yang masih tersimpan di snapshot.
+- `GalatView` menerima `Object galat`: bila `ApiException`, pesan server ditampilkan; selain itu dianggap masalah koneksi.
 
-### 3. Validasi dengan Pydantic (`schemas.py`)
-
-```python
-class KegiatanBase(BaseModel):
-    judul: str = Field(min_length=1, max_length=100)
-    tanggal: date
-    nominal: int = Field(default=0, ge=0)
-
-
-class KegiatanInput(KegiatanBase):
-    @field_validator("judul")
-    @classmethod
-    def judul_tidak_kosong(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("judul wajib diisi")
-        return v
-
-    @model_validator(mode="after")
-    def cek_aturan_bisnis(self):
-        if self.tipe == Tipe.tanpa:
-            self.nominal = 0
-            self.kategori = "-"
-            return self
-        if self.nominal <= 0:
-            raise ValueError("nominal wajib lebih dari 0 untuk pemasukan/pengeluaran")
-        ...
-
-
-class KegiatanOut(KegiatanBase):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    created_at: datetime
-```
-
-- `Field(min_length=..., ge=0)` memberi batasan sederhana pada satu field.
-- `@field_validator` memeriksa **satu field** (judul tidak boleh hanya spasi).
-- `@model_validator(mode="after")` memeriksa **gabungan beberapa field** setelah semuanya valid, yaitu aturan bisnis yang bergantung pada `tipe`.
-- `ValueError` di dalam validator otomatis menjadi balasan **422** dengan pesan yang bisa dibaca.
-- Skema dibagi tiga: `KegiatanInput` (data masuk dari klien), `KegiatanOut` (data keluar, ditambah `id` dan cap waktu dari database), dan `KegiatanPatch` (semua field opsional).
-- `from_attributes=True` membuat Pydantic bisa membaca objek model SQLAlchemy secara langsung.
-
-### 4. Router dan kode status (`routers/kegiatan.py`)
-
-```python
-router = APIRouter(prefix="/kegiatan", tags=["kegiatan"])
-
-
-def _ambil_atau_404(db: Session, kegiatan_id: int) -> Kegiatan:
-    k = db.get(Kegiatan, kegiatan_id)
-    if k is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kegiatan tidak ditemukan")
-    return k
-
-
-@router.post("", response_model=KegiatanOut, status_code=status.HTTP_201_CREATED)
-def tambah_kegiatan(data: KegiatanInput, db: Session = Depends(get_db)):
-    k = Kegiatan(**data.model_dump())
-    db.add(k)
-    db.commit()
-    db.refresh(k)
-    return k
-
-
-@router.delete("/{kegiatan_id}", status_code=status.HTTP_204_NO_CONTENT)
-def hapus_kegiatan(kegiatan_id: int, db: Session = Depends(get_db)):
-    db.delete(_ambil_atau_404(db, kegiatan_id))
-    db.commit()
-```
-
-- `APIRouter(prefix, tags)` mengelompokkan endpoint sejenis, lalu didaftarkan di `main.py` dengan `app.include_router(...)`.
-- `response_model` memilih bentuk data yang dikirim ke klien dan menyaring field lain.
-- `status_code=201` untuk data baru dibuat dan `204` untuk berhasil tanpa isi balasan; `HTTPException(404)` menandai data yang tidak ada.
-- `db.get` mengambil satu baris menurut kunci utama, `db.add` menandai objek baru, `db.commit` menyimpan permanen, dan `db.refresh` membaca ulang baris karena `id` dan `created_at` diisi database.
-- `Kegiatan(**data.model_dump())` mengubah data tervalidasi menjadi objek model.
-- Fungsi pembantu `_ambil_atau_404` dipakai bersama oleh GET detail, PUT, PATCH, dan DELETE agar tidak ada kode yang berulang.
-
-### 5. Daftar dengan filter dan pagination
-
-```python
-stmt = select(Kegiatan)
-if tanggal:
-    stmt = stmt.where(Kegiatan.tanggal == tanggal)
-if selesai is not None:
-    stmt = stmt.where(Kegiatan.selesai == selesai)
-if q:
-    stmt = stmt.where(Kegiatan.judul.contains(q))
-
-total = db.scalar(select(func.count()).select_from(stmt.subquery()))
-response.headers["X-Total-Count"] = str(total)
-
-stmt = stmt.order_by(Kegiatan.selesai, Kegiatan.id.desc()).limit(limit).offset(offset)
-return db.scalars(stmt).all()
-```
-
-- `select(...)` membangun query bertahap; tiap `.where(...)` menambah satu syarat hanya bila filter itu dikirim.
-- `selesai is not None` (bukan `if selesai`) dipakai agar nilai `false` tetap diproses sebagai filter.
-- Jumlah seluruh data dihitung dari *subquery* sebelum `limit` diterapkan, lalu dikirim lewat header `X-Total-Count`.
-- `limit` dan `offset` memotong hasil per halaman, dan `Query(50, ge=1, le=200)` membatasi nilainya agar klien tidak meminta terlalu banyak.
-- Parameter `urut` bertipe `Literal["terbaru", "terlama"]`, sehingga nilai lain otomatis ditolak 422.
-
-### 6. PATCH dengan validasi ulang
-
-```python
-gabungan = KegiatanOut.model_validate(k).model_dump()
-gabungan.update(data.model_dump(exclude_unset=True))
-try:
-    valid = KegiatanInput.model_validate(gabungan)
-except ValidationError as e:
-    raise RequestValidationError(
-        e.errors(include_url=False, include_context=False)
-    ) from e
-```
-
-- `exclude_unset=True` hanya mengambil field yang benar-benar dikirim klien.
-- Data lama dan data baru digabung, lalu divalidasi ulang sebagai `KegiatanInput`, sehingga aturan bisnis tetap berlaku pada hasil akhirnya.
-- `RequestValidationError` membuat kegagalan ini dibalas 422 dengan format yang sama seperti validasi bawaan FastAPI. Opsi `include_context=False` membuang bagian yang tidak bisa diubah menjadi JSON.
-
-### 7. Migrasi Alembic
-
-```python
-# alembic/versions/0001_buat_tabel_kegiatan.py
-revision = "0001"
-down_revision = None
-
-def upgrade() -> None:
-    op.create_table("kegiatan", sa.Column("id", sa.Integer(), primary_key=True), ...)
-    op.create_index("ix_kegiatan_tanggal", "kegiatan", ["tanggal"])
-
-def downgrade() -> None:
-    op.drop_index("ix_kegiatan_tanggal", table_name="kegiatan")
-    op.drop_table("kegiatan")
-```
-
-```
-alembic upgrade head      # terapkan semua revisi
-alembic current           # revisi yang aktif sekarang
-alembic check             # bandingkan model dengan database
-alembic downgrade -1      # batalkan satu revisi
-alembic revision --autogenerate -m "pesan"   # buat revisi dari selisih model dan database
-```
-
-- Alembic mencatat setiap perubahan skema sebagai revisi bernomor, mirip `onUpgrade` di SQLite tetapi untuk server.
-- `upgrade()` menerapkan perubahan dan `downgrade()` membatalkannya, sehingga perubahan skema bisa diulang di mesin lain dan dibatalkan.
-- `down_revision` menunjuk revisi sebelumnya sehingga revisi membentuk satu rantai.
-- `env.py` membaca URL database dari konfigurasi aplikasi dan menunjuk `Base.metadata` sebagai acuan `--autogenerate`; model harus diimpor di sana agar terdeteksi.
-- `start.sh` menjalankan `alembic upgrade head` lalu `exec uvicorn ...`, sehingga tabel selalu siap sebelum API menerima request.
-
-### 8. Laporan dihitung di SQL (`routers/laporan.py`)
-
-```python
-_SELESAI = func.coalesce(
-    func.sum(case((Kegiatan.selesai.is_(True), 1), else_=0)), 0
-).label("selesai")
-_MASUK = func.coalesce(
-    func.sum(case((Kegiatan.tipe == Tipe.pemasukan, Kegiatan.nominal), else_=0)), 0
-).label("masuk")
-
-baris = db.execute(
-    select(Kegiatan.tanggal, _JUMLAH, _SELESAI, _MASUK, _KELUAR)
-    .where(Kegiatan.tanggal.between(mulai, sampai))
-    .group_by(Kegiatan.tanggal)
-).all()
-per_hari = {b.tanggal: b for b in baris}
-
-return [
-    RingkasanHariOut(**_susun(hari, per_hari.get(hari)))
-    for hari in (mulai + timedelta(days=i) for i in range(jumlah_hari))
-]
-```
-
-- `case((kondisi, nilai), else_=0)` adalah `CASE WHEN` di SQL: menjumlahkan nominal hanya untuk jenis tertentu dalam satu query.
-- `func.coalesce(..., 0)` mengganti `NULL` (saat tidak ada data) menjadi 0.
-- `group_by(Kegiatan.tanggal)` menghasilkan satu baris per tanggal untuk seluruh rentang dalam **satu query**.
-- Hari tanpa kegiatan tidak muncul di hasil `GROUP BY`, jadi dibuat dengan menelusuri semua tanggal dalam rentang (`timedelta`) dan memakai nol bila tidak ada barisnya.
-- Pengecekan rentang memakai `HTTPException(400)` untuk rentang terbalik atau lebih dari 31 hari.
-- Angka dihitung di database (bukan dijumlahkan dengan perulangan Python) karena database dirancang untuk agregasi dan hanya mengirim hasil ringkas.
-
-### 9. Flutter: konversi JSON dan galat API
+### 4. `Future.wait` dan tarik untuk menyegarkan
 
 ```dart
-Map<String, Object?> toJson() => {
-      'judul': judul,
-      'selesai': selesai,
-      'tipe': tipe.name,
-    };
+Future<DataHari> _ambil() async {
+  final tanggal = kunciTanggal(DateTime.now());
+  final hasil = await Future.wait([
+    repo.pada(tanggal, q: _kata),
+    repo.ringkasan(tanggal),
+  ]);
+  return DataHari(hasil[0] as List<Kegiatan>, hasil[1] as Ringkasan);
+}
 
-factory Kegiatan.fromJson(Map<String, dynamic> j) => Kegiatan(
-      id: j['id'] as int,
-      selesai: j['selesai'] as bool,
-      tipe: Tipe.values.byName(j['tipe'] as String),
-    );
-
-factory ApiException.dariRespons(http.Response res) {
-  var pesan = 'Server membalas kode ${res.statusCode}';
+Future<void> _tarikSegarkan() async {
+  _muat();
   try {
-    final detail = (jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>)['detail'];
-    if (detail is String) {
-      pesan = detail;
-    } else if (detail is List) {
-      pesan = detail.map((e) => (e['msg'] as String).replaceFirst('Value error, ', '')).join('\n');
-    }
+    await _future;
   } catch (_) {}
-  return ApiException(pesan, kode: res.statusCode);
+}
+
+RefreshIndicator(
+  onRefresh: _tarikSegarkan,
+  child: CustomScrollView(
+    physics: const AlwaysScrollableScrollPhysics(),
+    slivers: [...],
+  ),
+)
+```
+
+- `Future.wait` mengirim dua request yang tidak saling bergantung **bersamaan**; waktu tunggunya sekitar waktu yang terlama, bukan jumlah keduanya.
+- Hasilnya bertipe `List<Object>`, jadi tiap elemen harus di-*cast* (`as`).
+- `RefreshIndicator` menampilkan indikator selama `Future` yang dikembalikan `onRefresh` belum selesai, sehingga `_tarikSegarkan` menunggu `_future`.
+- `AlwaysScrollableScrollPhysics` membuat layar tetap bisa ditarik walau isinya sedikit.
+
+### 5. Operasi tulis yang aman
+
+```dart
+Future<void> _jalankan(Future<void> Function() aksi) async {
+  try {
+    await aksi();
+  } catch (e) {
+    if (mounted) tampilkanGalat(context, e);
+  }
+}
+
+// Form: tetap terbuka bila gagal
+setState(() => _menyimpan = true);
+try {
+  if (_modeUbah) {
+    await repo.ubah(k);
+  } else {
+    await repo.tambah(k);
+  }
+  if (!mounted) return;
+  Navigator.pop(context, true);
+} catch (e) {
+  if (mounted) tampilkanGalat(context, e);
+} finally {
+  if (mounted) setState(() => _menyimpan = false);
 }
 ```
 
-- Berbeda dengan `toMap()` SQLite, `toJson()` mengirim `selesai` sebagai boolean dan tidak mengirim `id` (sudah ada di URL).
-- FastAPI membalas galat dalam dua bentuk: teks (`HTTPException`) atau daftar (validasi 422); `dariRespons` menangani keduanya dan membuang awalan "Value error, ".
-- `utf8.decode(res.bodyBytes)` dipakai agar karakter non-ASCII terbaca benar.
-- Blok `try ... catch` melindungi dari balasan yang bukan JSON (misalnya halaman galat 502 dari proxy), lalu memakai pesan bawaan.
+- `Future<void> Function() aksi` adalah parameter berupa fungsi, sehingga satu pembungkus bisa dipakai untuk centang dan hapus.
+- `if (mounted)` dicek setiap kali sebelum memakai `context` atau `setState` setelah `await`, karena halaman bisa saja sudah ditutup.
+- `finally` selalu mengembalikan tombol Simpan, baik berhasil maupun gagal. Selama `_menyimpan` bernilai `true`, tombol dinonaktifkan agar tidak terkirim dua kali (akibatnya bisa data ganda bila jaringan lambat).
+- `Navigator.pop` hanya dipanggil saat berhasil, sehingga isian tidak hilang ketika gagal.
 
-### 10. Flutter: `KegiatanApi` dan `LaporanApi`
+### 6. Latihan: progres tipis, *optimistic update*, pencarian, dan Stopwatch
 
 ```dart
-class KegiatanApi {
-  final http.Client _client;
-  KegiatanApi({http.Client? client}) : _client = client ?? http.Client();
+// Latihan 1: tinggi 3 piksel selalu dicadangkan agar tampilan tidak bergeser
+SizedBox(
+  height: 3,
+  child: memuatUlang ? const LinearProgressIndicator(minHeight: 3) : null,
+)
 
-  http.Response _cek(http.Response res) {
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw ApiException.dariRespons(res);
+// Latihan 2: nilai sementara menimpa data server sampai server menjawab
+Future<void> _centang(Kegiatan k, bool nilai) async {
+  setState(() => _optimis[k.id!] = nilai);
+  try {
+    await repo.setSelesai(k, nilai);
+  } catch (e) {
+    if (!mounted) return;
+    setState(() => _optimis.remove(k.id!));
+    tampilkanGalat(context, e);
+  }
+}
+
+// Latihan 4: menunggu pengguna berhenti mengetik
+void _ketik(String nilai) {
+  _tunda?.cancel();
+  _tunda = Timer(const Duration(milliseconds: 400), () {
+    _kata = nilai.trim();
+    _muat();
+  });
+}
+
+// Latihan 3: dua cara memuat Laporan, diukur dengan Stopwatch
+final jam = Stopwatch()..start();
+await Future.wait([r.laporanHarian(tanggal), r.rentang(awal, basis)]);
+jam.stop();
+```
+
+- Garis tipis hanya tampil saat memuat **ulang** (`belumSelesai` tetapi data lama masih ada).
+- *Optimistic update*: `_optimis` adalah `Map<int, bool>` (id kegiatan ke nilai selesai). Tampilan memakai nilai itu lebih dulu; bila server menolak, entri dibuang sehingga tampilan kembali. Entri juga dibuang otomatis begitu data server sudah sama.
+- *Debounce*: tiap ketikan membatalkan `Timer` sebelumnya dan memulai yang baru, jadi request hanya dikirim setelah pengguna berhenti mengetik 400 ms, bukan satu per huruf.
+- `Stopwatch` mengukur waktu; satu pemanasan dilakukan lebih dulu supaya biaya membuka koneksi tidak ikut terhitung, lalu diambil rata-rata beberapa kali.
+
+### 7. Tugas (a): target tabungan di server
+
+```python
+class UserUpdate(BaseModel):
+    nama: str | None = Field(default=None, min_length=1, max_length=100)
+    target_harian: int | None = Field(default=None, ge=0, le=10_000_000)
+
+@router.patch("/users/me", response_model=UserOut)
+def ubah_profil(data: UserUpdate, db: DbSession, user: UserAktif):
+    for kolom, nilai in data.model_dump(exclude_none=True).items():
+        setattr(user, kolom, nilai)
+    db.commit()
+    db.refresh(user)
+    return user
+```
+
+```dart
+Future<Pengguna> ubahTarget(int target) async {
+  final res = await _klienToken
+      .patch(_uri('/users/me'), headers: _json,
+          body: jsonEncode({'target_harian': target}))
+      .timeout(batasWaktu);
+  if (res.statusCode != 200) throw ApiException.dariRespons(res);
+  final p = Pengguna.fromJson(_objek(res));
+  await simpanProfil(p);
+  return p;
+}
+
+void ikutiTargetPengguna() {
+  void sinkron() {
+    final p = pengguna.value;
+    if (p != null) targetHarian.value = p.targetHarian;
+  }
+  pengguna.addListener(sinkron);
+  sinkron();
+}
+```
+
+- `Field(ge=0, le=10_000_000)` membatasi nilai di server; di luar rentang dibalas 422.
+- `exclude_none=True` membuat nilai `null` dianggap tidak dikirim, sehingga kolom `NOT NULL` tidak pernah diisi `None`.
+- `PATCH` hanya mengubah field yang dikirim, jadi mengubah nama tidak menyentuh target, dan sebaliknya.
+- `ubahTarget` memakai `ApiClient` (dua *client* di `AuthApi`: biasa untuk login/refresh, `ApiClient` untuk yang butuh token), sehingga token kedaluwarsa diperbarui otomatis.
+- `ikutiTargetPengguna` memasang pendengar pada `pengguna`: login, ganti akun, dan perubahan profil otomatis menyelaraskan `targetHarian`. Di mode lokal pendengar ini tidak dipasang dan target tetap di HP.
+- Bila gagal, slider dikembalikan ke `targetHarian.value` dan SnackBar tampil.
+
+### 8. Tugas (b): `CacheClient` (*network first*)
+
+```dart
+class CacheClient extends http.BaseClient {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final idPengguna = pengguna.value?.id;
+    if (request.method != 'GET' || idPengguna == null) {
+      return _inner.send(request);
     }
-    return res;
+    final kunci = '$idPengguna|${request.url}';
+
+    http.StreamedResponse res;
+    try {
+      res = await _inner.send(request).timeout(_batas);
+    } catch (e) {
+      if (!_galatJaringan(e)) rethrow;
+      final entri = await _penyimpan.baca(kunci);
+      if (entri == null) rethrow;
+      statusOffline.value = entri.waktu;
+      final bytes = utf8.encode(entri.isi);
+      return http.StreamedResponse(Stream.value(bytes), 200, ...);
+    }
+
+    if (res.statusCode != 200) return res;
+    final bytes = await res.stream.toBytes();
+    await _penyimpan.simpan(kunci, utf8.decode(bytes), DateTime.now());
+    statusOffline.value = null;
+    return http.StreamedResponse(Stream.value(bytes), 200, ...);
   }
 
-  Future<List<Kegiatan>> daftar({String? tanggal}) async {
-    final res = _cek(await _client
-        .get(_uri('/kegiatan', tanggal == null ? null : {'tanggal': tanggal}))
-        .timeout(batasWaktu));
-    ...
-  }
+  bool _galatJaringan(Object e) =>
+      e is IOException || e is TimeoutException || e is http.ClientException;
 }
 ```
 
-- Konstruktor menerima `http.Client` opsional (*dependency injection*): kode produksi memakai client asli, sedangkan tes memberi `MockClient`.
-- `_cek` dipakai semua method sehingga respons di luar 2xx selalu dilempar sebagai `ApiException`.
-- Parameter query dikirim `null` bila tidak ada filter, agar URL tidak berakhir dengan tanda `?` kosong.
-- `.timeout(batasWaktu)` membatalkan permintaan yang terlalu lama.
-- `LaporanApi` memakai pola yang sama dengan method `harian(tanggal)` dan `rentang(mulai, sampai)`, ditambah kelas `LaporanHarian` yang membaca `per_kategori`.
+- `extends http.BaseClient` dengan method `send` adalah pola *decorator*: membungkus `ApiClient` dan menambah perilaku cadangan tanpa mengubah `KegiatanApi` atau `LaporanApi` selain *client* bawaannya.
+- *Network first*: server dicoba lebih dulu; cache hanya dipakai bila jaringan gagal (galat I/O, koneksi, atau waktu habis 8 detik).
+- Hanya **GET berstatus 200** yang disimpan; POST, PUT, PATCH, DELETE diteruskan apa adanya sehingga operasi tulis tidak pernah "berhasil" dari cache. Jawaban 401 atau 500 juga tidak disimpan.
+- Galat yang bukan galat jaringan (misalnya `ArgumentError` karena bug) dilempar lagi (`rethrow`) supaya bug tidak tersembunyi oleh cache.
+- Isi respons dibaca penuh (`stream.toBytes()`) karena `StreamedResponse` hanya bisa dibaca sekali; sesudah disimpan, respons baru dibuat dari bytes yang sama.
+- Kunci cache `idPengguna|URL` mencegah akun yang berbeda di satu HP saling melihat data.
+- `statusOffline` (`ValueNotifier<DateTime?>`) berisi waktu data cache saat offline dan `null` saat online; `ShellPage` mendengarkannya dengan `ValueListenableBuilder` untuk menampilkan banner.
+- `hapusSesi()` mengosongkan cache dan `statusOffline`; kegagalan membersihkan cache dibungkus `try/catch` agar tidak menggagalkan proses keluar.
 
-### 11. Flutter: unit test dengan `MockClient`
+### 9. Cache di SQLite
 
 ```dart
-test('422: pesan dibaca dari detail dan awalan Value error dibuang', () async {
-  final api = KegiatanApi(client: MockClient((req) async {
-    return http.Response(jsonEncode({
-      'detail': [{'msg': 'Value error, judul wajib diisi'}]
-    }), 422);
-  }));
+await db.insert(
+  'cache',
+  {'kunci': kunci, 'isi': isi, 'waktu': waktu.toIso8601String()},
+  conflictAlgorithm: ConflictAlgorithm.replace,
+);
 
-  await expectLater(
-    api.setSelesai(1, true),
-    throwsA(isA<ApiException>()
-        .having((e) => e.kode, 'kode', 422)
-        .having((e) => e.pesan, 'pesan', 'judul wajib diisi')),
-  );
+CREATE TABLE cache (
+  kunci TEXT PRIMARY KEY,
+  isi TEXT NOT NULL,
+  waktu TEXT NOT NULL
+)
+```
+
+- `CacheStore` adalah kelas abstrak dengan dua implementasi: `SqliteCacheStore` (berkas `tabungku_cache.db`, terpisah dari database kegiatan lokal) dan `MemoryCacheStore` untuk test yang tidak butuh plugin.
+- `ConflictAlgorithm.replace` menimpa entri lama dengan kunci yang sama, jadi cache selalu berisi data terbaru yang berhasil dimuat.
+- Waktu disimpan sebagai teks ISO 8601 (`toIso8601String`) dan dibaca kembali dengan `DateTime.parse`.
+
+### 10. Pengujian
+
+```dart
+class FakeRepository implements KegiatanRepository {
+  List<Kegiatan> daftar = [];
+  Object? galat;
+  int jumlahPanggil = 0;
+
+  @override
+  Future<List<Kegiatan>> pada(String tanggal, {String q = ''}) async {
+    jumlahPanggil++;
+    if (galat != null) throw galat!;
+    return daftar;
+  }
+  // ...
+}
+
+testWidgets('galat -> tombol Coba lagi -> data tampil', (tester) async {
+  final fake = FakeRepository()..galat = Exception('server mati');
+  repo = fake;
+  await tester.pumpWidget(_app());
+  await tester.pumpAndSettle();
+  expect(find.text('Coba lagi'), findsOneWidget);
+
+  fake.galat = null;
+  await tester.tap(find.text('Coba lagi'));
+  await tester.pumpAndSettle();
+  expect(find.textContaining('Belum ada kegiatan'), findsOneWidget);
 });
 ```
 
-- `MockClient` membalas permintaan dengan jawaban buatan, sehingga kelas diuji tanpa server dan Docker.
-- Tes memeriksa **permintaan yang dikirim** (metode, jalur, query, isi JSON) dan **hasil yang dikembalikan**.
-- `throwsA(isA<ApiException>().having(...))` memeriksa jenis galat sekaligus isi pesan dan kodenya.
-- Tes mencakup JSON (`toJson`, `fromJson`), semua method `KegiatanApi`, galat 422, 404, dan 502 (bukan JSON), serta `LaporanApi` (hari berisi, hari kosong, rentang, dan galat 400).
+- `FakeRepository` adalah repository palsu: isi, galat, dan hitungan panggilannya bisa diatur test, sehingga halaman diuji **tanpa server dan tanpa database**.
+- `testWidgets` merender widget; `pumpAndSettle` menunggu semua animasi dan `Future` selesai sebelum memeriksa layar.
+- `find.descendant(of: ..., matching: ...)` membatasi pencarian pada satu bagian layar bila teks yang sama muncul di beberapa tempat.
+- `Completer` dipakai pada repository palsu untuk **menahan** jawaban, sehingga keadaan di tengah proses (sedang memuat ulang, menunggu server) dapat diperiksa.
+- `MockClient` menguji lapisan HTTP: tes memeriksa permintaan yang dikirim (metode, jalur, query, isi) dan efek sampingnya, misalnya `versiData` naik hanya saat berhasil.
+- Untuk `CacheClient`, server palsu dapat dimatikan, diperlambat, atau diganti jawabannya, sehingga setiap skenario offline dapat diulang.
 
-## Hasil Uji Swagger (Bagian F)
+## Hasil Uji
+
+### `PATCH /users/me` (tugas a, backend)
 
 | No | Skenario | Hasil yang diharapkan | Hasil |
 |----|----------|-----------------------|-------|
-| 1 | `POST` pengeluaran Makan Rp 15.000 | 201, ada `id` dan `created_at` | Lulus |
-| 2 | `POST` pemasukan dengan kategori Makan | 201, `kategori` menjadi `-` | Lulus |
-| 3 | `POST` judul hanya spasi | 422, `judul wajib diisi` | Lulus |
-| 4 | `POST` kategori `Jajan` | 422, daftar kategori yang sah | Lulus |
-| 5 | `PATCH` `{"selesai": true}` | 200, `selesai` menjadi `true` | Lulus |
-| 6 | `PATCH` `{"nominal": 0}` pada pengeluaran | 422, data tidak berubah | Lulus |
-| 7 | `GET` dengan `tanggal` dan `limit=1` | 200, satu data, header `x-total-count` | Lulus |
-| 8 | `DELETE` lalu `GET` pada id yang sama | 204, lalu 404 | Lulus |
+| 1 | Ubah `target_harian` menjadi 35000 | 200, target 35000 | [Lulus] |
+| 2 | Baca profil lagi | target 35000 tersimpan | [Lulus] |
+| 3 | Ubah `nama` saja | 200, target tetap 35000 | [Lulus] |
+| 4 | `nama` hanya spasi | 422 | [Lulus] |
+| 5 | Body kosong `{}` | 200, tidak ada perubahan | [Lulus] |
+| 6 | `target_harian` 0 (batas bawah) | 200 | [Lulus] |
+| 7 | `target_harian` 10000000 (batas atas) | 200 | [Lulus] |
+| 8 | `target_harian` 10000001 | 422 | [Lulus] |
+| 9 | `target_harian` -1 | 422 | [Lulus] |
+| 10 | Tanpa token | 401 | [Lulus] |
+
+### Aplikasi di emulator (checkpoint E)
+
+| No | Skenario | Hasil yang diharapkan | Hasil |
+|----|----------|-----------------------|-------|
+| 1 | Login, tambah beberapa kegiatan | Tampil di Hari Ini beserta ringkasannya | [Lulus] |
+| 2 | Periksa tabel `kegiatan` di Adminer | Data tersimpan dengan `user_id` yang benar | [Lulus] |
+| 3 | Login dengan akun lain di HP yang sama | Daftar Hari Ini kosong | [Lulus] |
+| 4 | Tarik layar Hari Ini ke bawah | Indikator berputar, data diperbarui | [Lulus] |
+| 5 | `docker compose stop api`, lalu tarik layar | Tampilan galat dengan tombol Coba lagi | [Lulus] |
+| 6 | Server mati, simpan form | SnackBar galat, form tetap terbuka | [Lulus] |
+| 7 | `docker compose start api`, tekan Coba lagi | Data kembali tampil | [Lulus] |
+| 8 | Buka tab Laporan | Ringkasan, kategori, dan 7 hari tampil | [Lulus] |
+| 9 | Jalankan dengan `MODE_DATA=lokal` | Aplikasi memakai SQLite tanpa mengubah kode halaman | [Lulus] |
+
+### Target tabungan di server (tugas a, aplikasi)
+
+| No | Skenario | Hasil yang diharapkan | Hasil |
+|----|----------|-----------------------|-------|
+| 1 | Geser slider ke Rp 50.000 | Tersimpan di `users.target_harian` | [Lulus] |
+| 2 | Lihat kartu ringkasan Hari Ini | Target Rp 50.000 | [Lulus] |
+| 3 | Tutup lalu buka aplikasi | Slider tetap Rp 50.000 | [Lulus] |
+| 4 | Keluar, login akun lain | Target akun itu sendiri (bukan 50.000) | [Lulus] |
+| 5 | Server mati, geser slider | Slider dikembalikan, SnackBar galat | [Lulus] |
+| 6 | Mode lokal | Target tersimpan di HP seperti pertemuan 7 | [Lulus] |
+
+### Mode offline (tugas b)
+
+| No | Skenario | Hasil yang diharapkan | Hasil |
+|----|----------|-----------------------|-------|
+| 1 | Muat Hari Ini dan Laporan saat online | Data tampil, tanpa banner | [Lulus] |
+| 2 | Matikan server, tarik layar Hari Ini | Data tetap tampil, banner Offline dengan jam | [Lulus] |
+| 3 | Buka Laporan saat offline | Laporan tetap tampil, banner sama | [Lulus] |
+| 4 | Simpan form saat offline | SnackBar galat, form tetap terbuka | [Lulus] |
+| 5 | Buka tanggal yang belum pernah dimuat | Tampilan galat (tidak ada cache) | [Lulus] |
+| 6 | Nyalakan server, tarik layar | Data diperbarui, banner hilang | [Lulus] |
+
+### Unit dan widget test
+
+Hasil `flutter test`: [isi jumlah] tes lulus. Cakupannya:
+
+- `repository_test.dart`: halaman Hari Ini dengan `FakeRepository` (galat lalu Coba lagi, daftar tampil, hapus memicu muat ulang, centang, gagal centang), `GalatView`, dan `ApiKegiatanRepository` (`versiData` naik hanya saat berhasil, `rentang` satu request, `cari`, `ringkasan`)
+- `latihan_test.dart`: garis progres tipis, *optimistic update* (berhasil dan dikembalikan), `Future.wait` lebih cepat dari berurutan, dan pencarian dengan jeda ketik
+- `target_server_test.dart`: `ubahTarget` (berhasil, token kedaluwarsa, ditolak 422, server mati) dan `targetHarian` yang mengikuti pengguna
+- `cache_client_test.dart`: online menyimpan, offline memakai cache, offline tanpa cache melempar galat, timeout, POST tidak di-cache, akun lain tidak memakai cache, keluar menghapus cache, dan banner di `ShellPage`
+- tes lama dari Pertemuan 8 sampai 10 tetap berjalan
 
 ## Jawaban Latihan Mandiri
 
-**1. Filter `selesai`.** Parameter `selesai: bool | None` ditambahkan pada `GET /kegiatan`. Syaratnya dicek dengan `is not None` agar nilai `false` tetap diproses sebagai filter, dan `selesai=true` hanya mengembalikan kegiatan yang sudah selesai.
+**1. Garis progres tipis saat memuat ulang.** `FutureBuilder` mempertahankan data lama selama `Future` baru berjalan, sehingga memuat pertama kali (belum ada data, lingkaran penuh) bisa dibedakan dari memuat ulang (data ada, `connectionState` belum selesai, garis tipis di atas daftar). Tingginya selalu dicadangkan 3 piksel agar tampilan tidak bergeser saat garis muncul dan hilang.
 
-**2. Parameter `urut`.** Bertipe `Literal["terbaru", "terlama"]`. `terbaru` mengurutkan menurut tanggal lalu id secara menurun, `terlama` secara menaik. Bila `urut` kosong, urutan lama tetap berlaku (belum selesai di atas). Nilai selain dua pilihan itu dibalas 422.
+**2. *Optimistic update* pada centang.** Tampilan memakai nilai sementara (`_optimis`) yang menimpa data server, lalu `PATCH` dikirim. Bila server menolak, nilai sementara dibuang sehingga tampilan kembali dan galat ditampilkan. Imbalannya: terasa instan, tetapi harus ada jalur pengembalian dan pemberitahuan ke pengguna.
 
-**3. Revisi Alembic `0001b`.** Kolom `catatan` (`TEXT`, nullable) ditambahkan ke model, lalu revisi dibuat dengan `alembic revision --autogenerate --rev-id 0001b`. Isinya `op.add_column('kegiatan', sa.Column('catatan', sa.Text(), nullable=True))` di `upgrade()` dan `op.drop_column('kegiatan', 'catatan')` di `downgrade()`. Setelah `alembic upgrade head`, kolom `catatan` muncul di Adminer; setelah `alembic downgrade -1`, kolom itu hilang. Revisi dan perubahan model dihapus lagi sebelum melanjutkan ke Pertemuan 10, lalu `alembic check` kembali bersih.
+**3. Waktu muat Laporan dengan dan tanpa `Future.wait`.** Dua request berurutan butuh sekitar **jumlah** waktunya, sedangkan `Future.wait` butuh sekitar waktu **yang terlama**. Hasil pengukuran (rata-rata beberapa kali, setelah satu pemanasan):
 
-**4. Tanggal `06-10-2026`.** Server membalas **422 Unprocessable Entity**:
-
-```json
-{"detail":[{"type":"date_from_datetime_parsing","loc":["body","tanggal"],"msg":"Input should be a valid date or datetime, invalid character in year","input":"06-10-2026","ctx":{"error":"invalid character in year"}}]}
-```
-
-Pydantic membaca field `date` dengan format ISO 8601 (`YYYY-MM-DD`). Teks `06-10-2026` tidak cocok dengan format itu (bagian awalnya dibaca sebagai tahun yang tidak valid). `loc` menunjuk `body` lalu `tanggal`, jadi pesan ini memberi tahu letak persis kesalahannya. Data ditolak sebelum menyentuh database.
+**4. Pencarian judul di Hari Ini.** Kolom cari mengirim parameter `q` ke server (`GET /kegiatan?tanggal=...&q=...`) setelah pengguna berhenti mengetik 400 ms (*debounce*), supaya tidak ada satu request per huruf. Hasil kosong menampilkan pesan khusus pencarian, dan kartu ringkasan tetap menghitung seluruh kegiatan hari itu.
 
 ## Jawaban Pertanyaan Refleksi
 
-1. **`POST` membalas 201 dan `DELETE` 204, bukan 200.** 201 (*Created*) memberi tahu bahwa sebuah sumber daya baru berhasil dibuat, dan balasannya berisi data barunya. 204 (*No Content*) berarti berhasil tetapi tidak ada isi yang perlu dikirim, karena data yang dihapus sudah tidak ada. Kode 200 terlalu umum untuk kedua kasus itu.
-2. **Skema diubah langsung lewat Adminer.** Perubahan itu tidak tercatat di revisi Alembic, sehingga database berbeda dari kode dan dari mesin lain. `alembic check` akan melaporkan selisih, dan revisi berikutnya bisa gagal (misalnya `Table already exists` atau `Can't locate revision`). Perubahan juga tidak bisa dibatalkan dengan `downgrade`.
-3. **`PATCH` memvalidasi ulang data gabungan.** `PATCH` hanya mengirim sebagian field, sehingga aturan bisnis yang menyangkut beberapa field tidak bisa dicek dari data yang dikirim saja. Contoh data rusak yang dicegah: `PATCH {"nominal": 0}` pada kegiatan pengeluaran (pengeluaran dengan nominal 0 melanggar aturan), atau `PATCH {"tipe": "pengeluaran"}` pada kegiatan tanpa uang (nominal masih 0 dan kategori belum sah).
-4. **Pagination dan `X-Total-Count`.** Aplikasi mobile terbatas pada data seluler, baterai, dan memori, jadi tidak boleh mengunduh ribuan baris sekaligus; data diambil per halaman dengan `limit` dan `offset`. Header `X-Total-Count` memberi tahu jumlah seluruh data sebelum dipotong, sehingga aplikasi tahu apakah masih ada halaman berikutnya dan bisa menampilkan jumlah total tanpa mengunduh semuanya.
-5. **`KegiatanApi` menerima `http.Client` lewat konstruktor.** Saat dijalankan, kelas memakai client asli; saat diuji, tes memberi `MockClient` yang membalas dengan jawaban buatan, sehingga tes cepat, tidak butuh server, dan bisa menguji kasus galat yang sulit dibuat sungguhan (422, 404, 502). Ini disebut *dependency injection*.
+1. **Bila backend diganti (misalnya ke Firebase), bagian mana yang berubah?** Cukup lapisan data: dibuat `FirebaseKegiatanRepository implements KegiatanRepository`, lalu inisialisasi `repo` diarahkan ke sana. Halaman tidak berubah karena hanya mengenal kontrak abstrak. `KegiatanApi`, `LaporanApi`, dan `ApiClient` tidak lagi dipakai untuk data (autentikasi ikut berganti bila login juga pindah ke Firebase).
+2. **Kenapa `versiData` dinaikkan setelah request berhasil?** Bila dinaikkan sebelum atau tanpa mengecek hasil, halaman memuat ulang data yang sebenarnya tidak berubah, atau menampilkan perubahan yang sebenarnya ditolak server. Dengan menaikkannya setelah `await` sukses, pengecualian saat gagal dilempar lebih dulu dan tampilan tetap sesuai keadaan server.
+3. **Risiko bila tombol Simpan bisa ditekan dua kali saat jaringan lambat.** Dua permintaan `POST` terkirim sehingga terbentuk **data ganda**. Karena itu tombol dinonaktifkan selama `_menyimpan` bernilai `true`, dan dikembalikan di blok `finally`.
+4. **Kapan data *network first* bisa usang, dan bagaimana pengguna tahu?** Data cache usang bila ada perubahan di server (misalnya dari perangkat lain) sejak data itu disimpan, dan selama offline pengguna tidak melihatnya. Pengguna tahu lewat banner "Offline: menampilkan data tersimpan (terakhir diperbarui pukul HH:mm)", yang menyebut kapan data itu terakhir berhasil dimuat.
+5. **Kenapa cache dihapus saat pengguna keluar?** Cache berisi data pribadi pengguna. Bila tidak dihapus, data itu tertinggal di perangkat setelah keluar dan bisa terbaca orang lain yang memakai HP itu. Kunci cache yang memuat id pengguna menjadi lapisan pengaman tambahan agar akun lain tidak melihat data akun sebelumnya.
 
 ## Cara Menjalankan
 
-**Backend** (di folder `pertemuan9`, Docker Desktop harus menyala):
+**Backend** (di folder `pertemuan11`, Docker Desktop harus menyala):
 
 ```
 cp .env.example .env
+```
+
+Isi `JWT_SECRET` di `.env` dengan kunci acak (misalnya hasil
+`python3 -c "import secrets; print(secrets.token_hex(32))"`). Berkas `.env`
+**tidak** ikut ke GitHub. Lalu:
+
+```
 docker compose up -d --build
 docker compose ps
 ```
 
-Migrasi Alembic otomatis berjalan saat container `api` menyala. Setelah `mysql` berstatus *healthy*:
-
 | Alamat | Isi |
 |---|---|
-| `http://localhost:8000/docs` | Swagger (CRUD kegiatan dan laporan) |
+| `http://localhost:8000/docs` | Swagger |
 | `http://localhost:8000/health` | Status API dan database |
-| `http://localhost:8081` | Adminer (Server `mysql`, user dan password sesuai `.env`) |
+| `http://localhost:8081` | Adminer |
 
-Perintah migrasi (dijalankan di dalam container):
-
-```
-docker compose exec api alembic current
-docker compose exec api alembic check
-```
-
-**Aplikasi Flutter** (di folder `pertemuan9/mobile`):
+**Aplikasi Flutter** (di folder `pertemuan11/mobile`, emulator dan server menyala):
 
 ```
 flutter pub get
 flutter test
+flutter run -d emulator-5554
 ```
+
+| Mode | Perintah |
+|---|---|
+| Server (bawaan) | `flutter run -d emulator-5554` |
+| SQLite lokal | `flutter run -d emulator-5554 --dart-define=MODE_DATA=lokal` |
+
+Emulator mengakses server lewat `http://10.0.2.2:8000` (alamat bawaan, bisa
+diubah di Pengaturan).
 
 ## Struktur Folder
 
 ```
-pertemuan9/
+pertemuan11/
   docker-compose.yml         MySQL + API + Adminer
   .env.example               contoh variabel lingkungan (.env tidak di-commit)
   backend/
-    Dockerfile               image API (menjalankan start.sh)
-    start.sh                 alembic upgrade head, lalu uvicorn
-    requirements.txt         dependensi Python (versi dikunci)
-    alembic.ini
-    alembic/
-      env.py                 koneksi dan Base.metadata untuk Alembic
-      script.py.mako         templat revisi
-      versions/
-        0001_buat_tabel_kegiatan.py
     app/
-      main.py                aplikasi FastAPI dan pendaftaran router
-      config.py              pengaturan dari environment variable
-      database.py            engine, SessionLocal, Base, get_db
-      models.py              model Kegiatan dan enum Tipe
-      schemas.py             skema Pydantic dan aturan bisnis
-      routers/
-        health.py            GET /health
-        kegiatan.py          CRUD /kegiatan
-        laporan.py           GET /laporan/harian dan /laporan/rentang
+      routers/auth.py        ditambah PATCH /users/me
+      schemas.py             ditambah UserUpdate
+      ...                    (lainnya sama seperti pertemuan 10)
   mobile/
     lib/
-      config/api_config.dart       alamat API
-      models/kegiatan.dart         Kegiatan, Ringkasan (toJson, fromJson)
-      models/laporan.dart          LaporanHarian
-      services/api_exception.dart  penerjemah galat FastAPI
-      services/kegiatan_api.dart   pembungkus /kegiatan
-      services/laporan_api.dart    pembungkus /laporan
-    test/                    unit test MockClient
+      data/
+        kegiatan_repository.dart         kontrak, versiData, dan repo
+        api_kegiatan_repository.dart     implementasi server
+        sqlite_kegiatan_repository.dart  implementasi SQLite
+        db_helper.dart                   akses SQLite (hanya dipakai repository)
+      services/
+        kegiatan_api.dart, laporan_api.dart, auth_api.dart
+        api_client.dart                  header Authorization + pembaruan token
+        cache_client.dart                cadangan saat offline (network first)
+        cache_store.dart                 cache SQLite dan memori, statusOffline
+      widgets/galat_view.dart            tampilan galat + tombol Coba lagi
+      pages/                             beranda, laporan, form, cari, pengaturan, shell
+      utils/ukur_waktu.dart              pengukur waktu muat (Latihan 3)
+    test/                    unit dan widget test (FakeRepository, MockClient)
   Docs/
     readme.md                berkas ini
 ```
