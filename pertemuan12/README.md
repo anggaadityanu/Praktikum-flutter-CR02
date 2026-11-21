@@ -29,7 +29,7 @@ Dashboard admin **TabungKu Admin** (Laravel 13 + Filament 5) yang berbagi satu d
 
 | Kategori Pengeluaran | Aplikasi (halaman Hari Ini) |
 |---|---|
-| ![Kategori](Docs/img/kategori.png) | ![Beranda aplikasi](Docs/img/beranda-app.png) |
+| ![Kategori](Docs/img/kategori.png) | ![Beranda aplikasi](Docs/img/pengguna.png) |
 
 ## Menjalankan
 
