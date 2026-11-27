@@ -6,3 +6,10 @@ build/
 .packages
 .pub-cache/
 .pub/
+.env
+.env.prod
+.venv/
+vendor/
+node_modules/
+backups/
+__pycache__/
